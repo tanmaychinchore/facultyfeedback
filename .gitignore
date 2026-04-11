@@ -1,0 +1,15 @@
+# Ignore vendor files (VERY IMPORTANT)
+config/google-api-php-client-2.4.0/vendor/
+
+# Ignore config folder if it has sensitive data
+config/
+
+# Ignore class folder if auto-generated
+class/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
