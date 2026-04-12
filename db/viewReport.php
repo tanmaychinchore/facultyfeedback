@@ -113,10 +113,15 @@ while($res2=$r2->fetch_assoc()):
     $cname=$res3['c_name'];
     echo "<b style='font-size: 18px;'>Course Name: </b><strong style='color:#162252;font-size: 16px;'>".$cname."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
   }
-  if($c_id[0]=='L')
-    $c=$c_id[0];
-  elseif ($c_id[0]=='T') 
-    $c="TH";
+  $c = 'TH'; // default
+  $code_upper = strtoupper($c_id);
+  if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+      $c = 'LAB';
+  } elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false) {
+      $c = 'TU';
+  } elseif ($code_upper[0] == 'T' || strpos($code_upper, 'TH') !== false) {
+      $c = 'TH';
+  }
   if($class=='FY_A' || $class=='FY_B')
     echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>"."FY"."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
   else
@@ -157,7 +162,7 @@ while($res2=$r2->fetch_assoc()):
           $question = $q['question'];
           $is_text_input = $q['is_text_input'];
 
-          if ($is_text_input) continue;
+          if ($is_text_input || stripos($question, 'comment') !== false) continue;
 
           $s2 = "SELECT option_number, option_text FROM feedback_option WHERE question_id='$q_id' ORDER BY option_number ASC";
           $res2 = $conn->query($s2);   
@@ -362,10 +367,15 @@ while($res2=$r2->fetch_assoc()):
 
   echo "<b style='font-size: 18px;'>Course Name: </b><strong style='color:#162252;font-size: 16px;'>".$electiveName."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
   
-  if($electiveID[0]=='L')
-    $c=$electiveID[0];
-  elseif ($electiveID[0]=='T') 
-    $c='TH';
+  $c = 'TH'; // default
+  $code_upper = strtoupper($electiveID);
+  if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+      $c = 'LAB';
+  } elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false) {
+      $c = 'TU';
+  } elseif ($code_upper[0] == 'T' || strpos($code_upper, 'TH') !== false) {
+      $c = 'TH';
+  }
   
 
     if($sem==1 or $sem==2)
@@ -419,7 +429,7 @@ else if($sem==7 or $sem==8)
           $question = $q['question'];
           $is_text_input = $q['is_text_input'];
 
-          if ($is_text_input) continue;
+          if ($is_text_input || stripos($question, 'comment') !== false) continue;
 
           $s2 = "SELECT option_number, option_text FROM feedback_option WHERE question_id='$q_id' ORDER BY option_number ASC";
           $res2 = $conn->query($s2);   

@@ -51,10 +51,15 @@ $s3 = "SELECT c_name from subject where course_code='$course_code'";
     $cname=$res3['c_name'];
 }
 
-if($course_code[0]=='L')
-    $c=$course_code[0];
-elseif ($course_code[0]=='T') 
-    $c='TH';
+$c = 'TH'; // default
+$code_upper = strtoupper($course_code);
+if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+    $c = 'LAB';
+} elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false) {
+    $c = 'TU';
+} elseif ($code_upper[0] == 'TH' || strpos($code_upper, 'TH') !== false) {
+    $c = 'TH';
+}
 
 $sem_parity = ($sem % 2 == 0) ? 2 : 1;
 $overall_achieved = 0;
@@ -67,7 +72,7 @@ $sql = "SELECT q.id as q_id, q.question_text as question, q.is_text_input
 $result = $conn->query($sql);   
 while($row=$result->fetch_assoc()):
     $q_id = $row['q_id'];
-    if ($row['is_text_input']) continue;
+    if ($row['is_text_input'] || stripos($row['question'], 'comment') !== false) continue;
 
     $s2 = "SELECT option_number FROM feedback_option WHERE question_id='$q_id'";
     $res2 = $conn->query($s2);   
