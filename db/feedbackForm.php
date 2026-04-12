@@ -154,72 +154,80 @@ if($flag==0):
 			elseif ($course_code[0]=='T') 
 				$c='TH';
 
+			$sem_num = isset($_SESSION["sem"]) ? $_SESSION["sem"] : 1;
+			$sem_parity = ($sem_num % 2 == 0) ? 'Even' : 'Odd';
 
-			$sql = "SELECT q_id,question FROM question where course_type='$c'  and acad_year='$acad_year'";
+			$sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input 
+					FROM question_set qs
+					JOIN question_heading h ON qs.id = h.question_set_id
+					JOIN feedback_question q ON h.id = q.heading_id
+					WHERE qs.code = '$c' AND qs.acad_year = '$acad_year' AND qs.semester = '$sem_parity'
+					ORDER BY h.heading_order ASC, q.question_order ASC";
 			$result = $conn->query($sql);   
-			$noOfQues=$result->num_rows;                   
+			$current_heading = "";
+			$q_counter = 1;
 			while($row=$result->fetch_assoc()): 
-				$q_id=$row["q_id"];?>
+				$q_id=$row["q_id"];
+				$heading=$row["heading"];
+				$is_text_input = $row["is_text_input"];
+
+				if ($heading != $current_heading):
+					$current_heading = $heading;
+			?>
+					<div class="container" align="left" style="width: 80%; margin-top: 20px;">
+						<h3 style="color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; font-family: sans-serif;"><?= htmlspecialchars($heading) ?></h3>
+					</div>
+			<?php 
+				endif;
+			?>
 				<div class="container" align="left" style="width: 80%;" id="answer" >
 					<div class="row">
 						<br/>
 						<div class="panel panel-primary">
 							<div class="panel-heading" > 
-								<p  style="text-align: left; font-size: 20px; margin: 0em; font-family: sans-serif">Question:&nbsp;<b id="q_id"><?= $row['q_id'] ?></b></p> <br>  
-								<p id="question" style="text-align: left; font-size: 20px; margin-top: -20px; word-break: keep-all; font-family: sans-serif"> <?= $row['question']." *" ?></p>
+								<p  style="text-align: left; font-size: 20px; margin: 0em; font-family: sans-serif">Question:&nbsp;<b id="q_id"><?= $q_counter ?></b></p> <br>  
+								<p id="question" style="text-align: left; font-size: 20px; margin-top: -20px; word-break: keep-all; font-family: sans-serif"> <?= htmlspecialchars($row['question'])." *" ?></p>
 
 							</div><!--.panel-heading-->
 
 							<div class = "panel-body">
 								<h4>Your Answer</h4>
 							</div>
-							<?php if($q_id==$noOfQues):?>
+							
+							<?php if($is_text_input): ?>
+								<ul class="list-group">
+									<li>
+										<input type="text" style=" border: none; border-bottom: 1px #5480CD solid; width: 90%; height: 12%; padding: 5px; margin-left: 3%;" name="<?= $q_id ?>" required>
+										<br><br>
+									</li>
+								</ul>
+							<?php else: ?>
 								<ul class = "list-group" >
 									<?php
-									$sql2 = "SELECT option_no,`option` FROM options where course_type='$c' and q_id=$q_id  and acad_year='$acad_year'";
-									$result2 = $conn->query($sql2) or die($conn->error);?>
-									<li >
-										<div class="checkbox" ><b> Min &nbsp;&nbsp;</b>              
-											<?php while($row2=$result2->fetch_assoc()): 
-												$option_no=$row2["option_no"];
+									$sql2 = "SELECT option_number as option_no, option_text as `option` FROM feedback_option WHERE question_id=$q_id ORDER BY option_number ASC";
+									$result2 = $conn->query($sql2) or die($conn->error);
 
-												$option=$row2["option"];?>
-												<label class="radio-inline">
-													<input id="radio" type="radio" value="<?php echo $option_no;?>" name=<?= $row['q_id'] ?> required/><?php echo $option;?>
+									while($row2=$result2->fetch_assoc()): 
+										$option_no=$row2["option_no"];
+										$option=$row2["option"];?>
+										<li class = "list-group-item">
+											<div class="checkbox" >
+											   <label class="radio-inline">
+												  <input id="radio" type="radio" value="<?php echo $option_no;?>" name="<?= $q_id ?>" required/>
+												  <?php echo htmlspecialchars($option);?>               
 												</label>
-
-
-
-												<?php endwhile;?><b> &nbsp;&nbsp;Max </b> 
 											</div>
 										</li>
-									</ul>
-								<?php endif;?>
-								<?php if($q_id<$noOfQues):?>
-									<ul class = "list-group" >
-										<?php
-										$sql2 = "SELECT option_no,`option` FROM options where course_type='$c' and q_id=$q_id and acad_year='$acad_year'";
-										$result2 = $conn->query($sql2) or die($conn->error);
-
-										while($row2=$result2->fetch_assoc()): 
-											$option_no=$row2["option_no"];
-
-											$option=$row2["option"];?>
-											<li class = "list-group-item">
-												<div class="checkbox" >
-												   <label class="radio-inline">
-													  <input id="radio" type="radio" value="<?php echo $option_no;?>" name=<?= $row['q_id'] ?> required/>
-													  <?php echo $option;?>               
-													</label>
-												</div>
-											</li>
-										<?php endwhile;?>
-									</ul>
-								<?php endif;?>
-							</div>
+									<?php endwhile;?>
+								</ul>
+							<?php endif; ?>
 						</div>
 					</div>
-				<?php endwhile; ?>
+				</div>
+			<?php 
+				$q_counter++;
+				endwhile; 
+			?>
 				<div class="container" align="left" style="width: 80%;" id="comment" >
 					<div class="row">
 						<br/>
@@ -235,16 +243,12 @@ if($flag==0):
 							</div>
 
 							<ul class = "list-group" >
-								<?php
-								$sql2 = "SELECT option_no,`option` FROM options where course_type='$c' and q_id=$q_id and acad_year='$acad_year'";
-								$result2 = $conn->query($sql2) or die($conn->error);?>
 								<li >
 
 									<input type="text" style=" border: none; border-bottom: 1px #5480CD solid; width: 90%; height: 12%; padding: 5px; margin-left: 3%;" name="stu_comment">
 									<br><br>
 								</li>
 							</ul>
-
 
 						</div>
 					</div>
