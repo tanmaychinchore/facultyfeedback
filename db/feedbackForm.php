@@ -149,10 +149,15 @@ if($flag==0):
 			</div>
 
 			<?php 
-			if($course_code[0]=='L')
-				$c=$course_code[0];
-			elseif ($course_code[0]=='T') 
-				$c='TH';
+			$c = 'TH'; // default
+			$code_upper = strtoupper($course_code);
+			if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+				$c = 'LAB';
+			} elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false) {
+				$c = 'TU';
+			} elseif ($code_upper[0] == 'T' || strpos($code_upper, 'TH') !== false) {
+				$c = 'TH';
+			}
 
 			$sem_num = isset($_SESSION["sem"]) ? $_SESSION["sem"] : 1;
 			$sem_parity = ($sem_num % 2 == 0) ? 2 : 1;
@@ -180,6 +185,31 @@ if($flag==0):
 			<?php 
 				endif;
 			?>
+				<?php if($is_text_input): ?>
+				<div class="container" align="left" style="width: 80%;" id="comment" >
+					<div class="row">
+						<br/>
+						<div class="panel panel-primary">
+							<div class="panel-heading" > 
+								<br>
+								<p id="question" style="text-align: left; font-size: 20px; margin-top: -20px; word-break: keep-all; font-family: sans-serif"> <?= htmlspecialchars($row['question']) ?></p>
+
+							</div><!--.panel-heading-->
+
+							<div class = "panel-body">
+								<h4>Your Answer</h4>
+							</div>
+							
+							<ul class="list-group">
+								<li>
+									<input type="text" style=" border: none; border-bottom: 1px #5480CD solid; width: 90%; height: 12%; padding: 5px; margin-left: 3%;" name="stu_comment">
+									<br><br>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+				<?php else: ?>
 				<div class="container" align="left" style="width: 80%;" id="answer" >
 					<div class="row">
 						<br/>
@@ -194,66 +224,34 @@ if($flag==0):
 								<h4>Your Answer</h4>
 							</div>
 							
-							<?php if($is_text_input): ?>
-								<ul class="list-group">
-									<li>
-										<input type="text" style=" border: none; border-bottom: 1px #5480CD solid; width: 90%; height: 12%; padding: 5px; margin-left: 3%;" name="<?= $q_id ?>" required>
-										<br><br>
-									</li>
-								</ul>
-							<?php else: ?>
-								<ul class = "list-group" >
-									<?php
-									$sql2 = "SELECT option_number as option_no, option_text as `option` FROM feedback_option WHERE question_id=$q_id ORDER BY option_number ASC";
-									$result2 = $conn->query($sql2) or die($conn->error);
+							<ul class = "list-group" >
+								<?php
+								$sql2 = "SELECT option_number as option_no, option_text as `option` FROM feedback_option WHERE question_id=$q_id ORDER BY option_number ASC";
+								$result2 = $conn->query($sql2) or die($conn->error);
 
-									while($row2=$result2->fetch_assoc()): 
-										$option_no=$row2["option_no"];
-										$option=$row2["option"];?>
-										<li class = "list-group-item">
-											<div class="checkbox" >
-											   <label class="radio-inline">
-												  <input id="radio" type="radio" value="<?php echo $option_no;?>" name="<?= $q_id ?>" required/>
-												  <?php echo htmlspecialchars($option);?>               
-												</label>
-											</div>
-										</li>
-									<?php endwhile;?>
-								</ul>
-							<?php endif; ?>
+								while($row2=$result2->fetch_assoc()): 
+									$option_no=$row2["option_no"];
+									$option=$row2["option"];?>
+									<li class = "list-group-item">
+										<div class="checkbox" >
+										   <label class="radio-inline">
+											  <input id="radio" type="radio" value="<?php echo $option_no;?>" name="<?= $q_id ?>" required/>
+											  <?php echo htmlspecialchars($option);?>               
+											</label>
+										</div>
+									</li>
+								<?php endwhile;?>
+							</ul>
 						</div>
 					</div>
 				</div>
+				<?php endif; ?>
 			<?php 
-				$q_counter++;
+				if(!$is_text_input) {
+				    $q_counter++;
+				}
 				endwhile; 
 			?>
-				<div class="container" align="left" style="width: 80%;" id="comment" >
-					<div class="row">
-						<br/>
-						<div class="panel panel-primary">
-							<div class="panel-heading" > 
-								<br>
-								<p id="question" style="text-align: left; font-size: 20px; margin-top: -20px; word-break: keep-all; font-family: sans-serif">Any suggestions/comment?</p>
-
-							</div><!--.panel-heading-->
-
-							<div class = "panel-body">
-								<h4>Your Answer</h4>
-							</div>
-
-							<ul class = "list-group" >
-								<li >
-
-									<input type="text" style=" border: none; border-bottom: 1px #5480CD solid; width: 90%; height: 12%; padding: 5px; margin-left: 3%;" name="stu_comment">
-									<br><br>
-								</li>
-							</ul>
-
-						</div>
-					</div>
-				</div>
-
 			</form><br><br><hr><br>
 			<?php 
 			echo "<button type='submit' style='width:200px; height:50px; font-size:20px;' class='btn btn-primary'  onclick='validateForm()' id='next'>SAVE AND NEXT</button>";
