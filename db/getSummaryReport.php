@@ -56,7 +56,7 @@ if($course_code[0]=='L')
 elseif ($course_code[0]=='T') 
     $c='TH';
 
-$sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+$sem_parity = ($sem % 2 == 0) ? 2 : 1;
 $overall_achieved = 0;
 $overall_max = 0;
 $sql = "SELECT q.id as q_id, q.question_text as question, q.is_text_input

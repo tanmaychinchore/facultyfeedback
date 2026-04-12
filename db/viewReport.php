@@ -103,6 +103,7 @@ while($res2=$r2->fetch_assoc()):
   while($s=$b->fetch_assoc()){
     $roll_no[]=$s["roll_no"];
   }
+  $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
   ?>
 
   <?php
@@ -126,7 +127,7 @@ while($res2=$r2->fetch_assoc()):
   ?>
   <table style="border-radius: 5px;"><tr>
     <?php
-  $sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+  $sem_parity = ($sem % 2 == 0) ? 2 : 1;
   $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
           FROM question_set qs
           JOIN question_heading h ON qs.id = h.question_set_id
@@ -174,11 +175,11 @@ while($res2=$r2->fetch_assoc()):
           $noOfStudents = 0;
 
           if($status==0){
-            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
             $n = $conn->query($m); 
             if($n!== false && $n->num_rows>0) {          
                 $noOfStudents=$n->num_rows;
-                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
                 $res = $conn->query($check);   
                 while($response=$res->fetch_assoc()){
                   $resp_val = (int)$response["response"];
@@ -188,11 +189,11 @@ while($res2=$r2->fetch_assoc()):
             }
           }
           else{
-           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
            $n = $conn->query($m); 
            if($n!== false && $n->num_rows>0) {
              $noOfStudents=$n->num_rows;
-             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
              $res = $conn->query($check);   
              while($response=$res->fetch_assoc()){
                $resp_val = (int)$response["response"];
@@ -211,10 +212,14 @@ while($res2=$r2->fetch_assoc()):
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
+          $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
 ?>
       <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
         <?php echo "<br><b>".$question."</b><br>"; ?>
         <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="50%" height="180" ></canvas> 
+        <?php if($noOfStudents > 0): ?>
+            <br><b style='color:#162252;'>Percentage: <?= number_format($q_pct, 2) ?>%</b>
+        <?php endif; ?>
       </td>
       <script>
         var my_canvas=document.getElementById(<?php echo json_encode($c.$cname. $section_or_batch.$q_id)?>);
@@ -267,7 +272,9 @@ while($res2=$r2->fetch_assoc()):
             var x1 = x;    
             gctx.font = '12px serif'; 
             gctx.fillStyle= '#000000';
-            gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            if (noOfStudents > 0) {
+                gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            }
 
             gctx.fillStyle= '#2E5090'; 
             gctx.shadowColor = '#000000'; 
@@ -286,23 +293,19 @@ while($res2=$r2->fetch_assoc()):
 ?>
 </tr></table>
 <?php
-      if ($heading_max_possible_score > 0) {
-          $h_pct = ($heading_achieved_score / $heading_max_possible_score) * 100;
-          echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
-      }
+      $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
+      echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
   } // Heading loop
 ?>
 
 <?php
-    if ($overall_max_possible_score > 0) {
-        $o_pct = ($overall_achieved_score / $overall_max_possible_score) * 100;
-        echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
-    }
+    $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
+    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
 ?>
 
 <?php
 if($status==0){
- $check = "SELECT comment FROM comment_midsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+ $check = "SELECT comment FROM comment_midsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
  $res = $conn->query($check);
  if($res!== false && $res->num_rows>0)
  { 
@@ -315,7 +318,7 @@ while($comment=$res->fetch_assoc()){
   }
  }
 }else{
-   $check = "SELECT comment FROM comment_endsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+   $check = "SELECT comment FROM comment_endsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
  $res = $conn->query($check);
  if($res!== false && $res->num_rows>0)
  { 
@@ -352,6 +355,7 @@ while($res2=$r2->fetch_assoc()):
   while($s=$b->fetch_assoc()){
     $roll_no[]=$s["roll_no"];
   }
+  $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
   ?>
 
   <?php
@@ -385,7 +389,7 @@ else if($sem==7 or $sem==8)
  ?>
  <table style="border-radius: 5px;"><tr>
   <?php
-  $sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+  $sem_parity = ($sem % 2 == 0) ? 2 : 1;
   $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
           FROM question_set qs
           JOIN question_heading h ON qs.id = h.question_set_id
@@ -433,11 +437,11 @@ else if($sem==7 or $sem==8)
           $noOfStudents = 0;
 
           if($status==0){
-            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
             $n = $conn->query($m); 
             if($n!== false && $n->num_rows>0) {          
                 $noOfStudents=$n->num_rows;
-                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
                 $res = $conn->query($check);   
                 while($response=$res->fetch_assoc()){
                   $resp_val = (int)$response["response"];
@@ -447,11 +451,11 @@ else if($sem==7 or $sem==8)
             }
           }
           else{
-           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
            $n = $conn->query($m); 
            if($n!== false && $n->num_rows>0) {
              $noOfStudents=$n->num_rows;
-             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
              $res = $conn->query($check);   
              while($response=$res->fetch_assoc()){
                $resp_val = (int)$response["response"];
@@ -470,10 +474,14 @@ else if($sem==7 or $sem==8)
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
+          $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
 ?>
       <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
         <?php echo "<br><b>".$question."</b><br>"; ?>
         <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="50%" height="180" ></canvas> 
+        <?php if($noOfStudents > 0): ?>
+            <br><b style='color:#162252;'>Percentage: <?= number_format($q_pct, 2) ?>%</b>
+        <?php endif; ?>
       </td>
       <script>
         var my_canvas=document.getElementById(<?php echo json_encode($electiveName.$electiveID.$q_id)?>);
@@ -526,7 +534,9 @@ else if($sem==7 or $sem==8)
             var x1 = x;    
             gctx.font = '12px serif'; 
             gctx.fillStyle= '#000000';
-            gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            if (noOfStudents > 0) {
+                gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            }
 
             gctx.fillStyle= '#2E5090'; 
             gctx.shadowColor = '#000000'; 
@@ -545,23 +555,19 @@ else if($sem==7 or $sem==8)
 ?>
 </tr></table>
 <?php
-      if ($heading_max_possible_score > 0) {
-          $h_pct = ($heading_achieved_score / $heading_max_possible_score) * 100;
-          echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
-      }
+      $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
+      echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
   } // Heading loop
 ?>
 
 <?php
-    if ($overall_max_possible_score > 0) {
-        $o_pct = ($overall_achieved_score / $overall_max_possible_score) * 100;
-        echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
-    }
+    $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
+    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
 ?>
 
 <?php
 if($status==0){
- $check = "SELECT comment FROM comment_midsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+ $check = "SELECT comment FROM comment_midsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
  $res = $conn->query($check);
  if($res!== false && $res->num_rows>0)
   {
@@ -575,7 +581,7 @@ if($status==0){
   }
 
 }else{
-   $check = "SELECT comment FROM comment_endsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+   $check = "SELECT comment FROM comment_endsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
  $res = $conn->query($check);
  if($res!== false && $res->num_rows>0)
   {
