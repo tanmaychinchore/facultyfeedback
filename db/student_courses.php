@@ -67,7 +67,7 @@ if(isset($_POST["flag"])){
 else if(isset($_POST['score'])){
 
   $q_id=$_POST['q_id'];
-  $score=$_POST['score'];
+  $score=mysqli_real_escape_string($conn, $_POST['score']);
   $c_id=$_POST['course_code'];
 
   // $q_id = 1;

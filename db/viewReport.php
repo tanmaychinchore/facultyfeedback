@@ -126,187 +126,181 @@ while($res2=$r2->fetch_assoc()):
   ?>
   <table style="border-radius: 5px;"><tr>
     <?php
-    $sql = "SELECT q_id,question FROM question where course_type='$c' and acad_year='$acad_year'";
-    $result = $conn->query($sql);   
-    $noOfQues=$result->num_rows;
-    while($row=$result->fetch_assoc()):
-      $q_id=$row['q_id'];
-      $question=$row["question"];
+  $sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+  $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
+          FROM question_set qs
+          JOIN question_heading h ON qs.id = h.question_set_id
+          JOIN feedback_question q ON h.id = q.heading_id
+          WHERE qs.code = '$c' AND qs.acad_year = '$acad_year' AND qs.semester = '$sem_parity'
+          ORDER BY h.heading_order ASC, q.question_order ASC";
+  $result = $conn->query($sql);   
+  $questions_by_heading = [];
+  while($row=$result->fetch_assoc()){
+      $questions_by_heading[$row['heading']][] = $row;
+  }
 
-      ?>
+  $overall_achieved_score = 0;
+  $overall_max_possible_score = 0;
 
+  foreach ($questions_by_heading as $heading => $questions) {
+      echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 20px;'>" . htmlspecialchars($heading) . "</h4>";
+      
+      $heading_achieved_score = 0;
+      $heading_max_possible_score = 0;
+      $q_counter = 1;
+?>
+<table style="border-radius: 5px; width: 100%;"><tr>
+<?php
+      foreach ($questions as $q) {
+          $q_id = $q['q_id'];
+          $question = $q['question'];
+          $is_text_input = $q['is_text_input'];
 
-      <!-- <div class="container" style="float: left; width: 40%; height: 350px;">-->
+          if ($is_text_input) continue;
 
-
-        <?php
-        $s2 = "SELECT `option` FROM options where course_type='$c' and acad_year='$acad_year' and q_id='$q_id'";
-        $res2 = $conn->query($s2);   
-        $noOfOptions=$res2->num_rows;
-        $options=array();
-        $optionName=array();
-        while($row2=$res2->fetch_assoc()){
-          $options[]=0;
-          $optionName[]=$row2["option"];
-        }
-        if($status==0){
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-          $n = $conn->query($m); 
-
-          if($n!== false && $n->num_rows>0)
-          {          
-              $noOfStudents=$n->num_rows;
-              
-              $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-              $res = $conn->query($check);   
-              while($response=$res->fetch_assoc()){
-                $options[(int)$response["response"]-1]++;
-
-              }
-
-              if($q_id==$noOfQues){
-
-
-                for($g=0;$g<count($options);$g++){
-
-                  $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
-                }
-                if($noOfStudents!=0)
-                $avg=$avg/$noOfStudents;
-
-
+          $s2 = "SELECT option_number, option_text FROM feedback_option WHERE question_id='$q_id' ORDER BY option_number ASC";
+          $res2 = $conn->query($s2);   
+          $noOfOptions=$res2->num_rows;
+          $options=array();
+          $optionName=array();
+          $optionValues=array();
+          while($row2=$res2->fetch_assoc()){
+            $options[]=0;
+            $optionName[]=$row2["option_text"];
+            $optionValues[]=(int)$row2["option_number"];
           }
-         }
-        }
-        else{
-         $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-         $n = $conn->query($m); 
-         //$noOfStudents=$n->num_rows;
-         if($n!== false && $n->num_rows>0)
-         {
-         $noOfStudents=$n->num_rows;
-         $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-         $res = $conn->query($check);   
-         //if($res !== false && $res->num_rows>0)
-         while($response=$res->fetch_assoc()){
-          $options[(int)$response["response"]-1]++;
-
-        }
-
-        if($q_id==$noOfQues){
-
           
-          for($g=0;$g<count($options);$g++){
+          $max_opt_val = empty($optionValues) ? 0 : max($optionValues);
+          $noOfStudents = 0;
 
-            $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
+          if($status==0){
+            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+            $n = $conn->query($m); 
+            if($n!== false && $n->num_rows>0) {          
+                $noOfStudents=$n->num_rows;
+                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+                $res = $conn->query($check);   
+                while($response=$res->fetch_assoc()){
+                  $resp_val = (int)$response["response"];
+                  $idx = array_search($resp_val, $optionValues);
+                  if ($idx !== false) $options[$idx]++;
+                }
+            }
           }
-          if($noOfStudents!=0)
-          $avg=$avg/$noOfStudents;
+          else{
+           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+           $n = $conn->query($m); 
+           if($n!== false && $n->num_rows>0) {
+             $noOfStudents=$n->num_rows;
+             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+             $res = $conn->query($check);   
+             while($response=$res->fetch_assoc()){
+               $resp_val = (int)$response["response"];
+               $idx = array_search($resp_val, $optionValues);
+               if ($idx !== false) $options[$idx]++;
+             }
+           }
+          }
 
-
-        }
-       }
-      }
-
-      ?>
-
-
-
+          $q_achieved = 0;
+          for($g=0; $g<count($options); $g++){
+             $q_achieved += $optionValues[$g] * $options[$g];
+          }
+          $heading_achieved_score += $q_achieved;
+          $heading_max_possible_score += ($max_opt_val * $noOfStudents);
+          
+          $overall_achieved_score += $q_achieved;
+          $overall_max_possible_score += ($max_opt_val * $noOfStudents);
+?>
       <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
         <?php echo "<br><b>".$question."</b><br>"; ?>
         <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="50%" height="180" ></canvas> 
       </td>
       <script>
         var my_canvas=document.getElementById(<?php echo json_encode($c.$cname. $section_or_batch.$q_id)?>);
-        var gctx=my_canvas.getContext("2d");
+        if(my_canvas) {
+          var gctx=my_canvas.getContext("2d");
 
-        var noOfOptions=<?php echo json_encode($noOfOptions)?>;
-        var options=<?php echo json_encode($options)?>;
-        var optionName=<?php echo json_encode($optionName)?>;
-        var noOfStudents=<?php echo json_encode($noOfStudents)?>;
-        var q_id=<?php echo json_encode($q_id)?>;
-        var noOfQues=<?php echo json_encode($noOfQues)?>;
-        var data=[];
-        for(var m=0;m<noOfOptions;m++){
-          data[m]=[optionName[m],(options[m]/noOfStudents)*100];
-         
+          var noOfOptions=<?php echo json_encode($noOfOptions)?>;
+          var options=<?php echo json_encode($options)?>;
+          var optionName=<?php echo json_encode($optionName)?>;
+          var noOfStudents=<?php echo json_encode($noOfStudents)?>;
+          var q_id=<?php echo json_encode($q_id)?>;
+          var q_counter=<?php echo json_encode($q_counter)?>;
+          var data=[];
+          for(var m=0;m<noOfOptions;m++){
+            data[m]=[optionName[m], noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
+          }
+        
+          if(q_counter%2==0){
+            my_canvas.style.styleFloat="clear";
+          }
 
+          var bar_width=30;
+          var y_gap=30;
+          var bar_gap=100;
+          var x= 15; 
+
+          var y = my_canvas.height - y_gap;
+          my_canvas.width = data.length * bar_gap + x + 22;
+
+          gctx.moveTo(x-5,y);
+          gctx.lineTo(my_canvas.width,y); 
+          gctx.stroke();
+
+          gctx.shadowColor = '#000000';
+          gctx.shadowOffsetX=3;
+          gctx.shadowOffsetY=3;
+          gctx.shadowBlur = 3;
+
+          for (var i=0;i<data.length;i++){
+            gctx.shadowColor = '#ffffff'; 
+            gctx.font = '15px serif'; 
+            gctx.textAlign='left';
+            gctx.textBaseline='top';
+            gctx.fillStyle= '#162252';
+            gctx.fillText(data[i][0], x,y+5); 
+
+            gctx.beginPath();
+            gctx.lineWidth=2;
+            var y1 = y - data[i][1]; 
+            var x1 = x;    
+            gctx.font = '12px serif'; 
+            gctx.fillStyle= '#000000';
+            gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+
+            gctx.fillStyle= '#2E5090'; 
+            gctx.shadowColor = '#000000'; 
+            gctx.fillRect(x1,y1,bar_width,data[i][1]);
+
+            x=x+bar_gap;
+          }
         }
-       
-     
-
-        if(q_id%2==0){
-          my_canvas.style.styleFloat="clear";
-        }
-
-
-
-        var bar_width=30;
-var y_gap=30;  // Gap below the graph 
-var bar_gap=100; // Gap between Bars including width of the bar
-var x= 15; // Margin of graph from left  
-
-y=my_canvas.height -y_gap ;
-if(q_id==noOfQues){
-  bar_gap=50;
-  my_canvas.width=data.length * (bar_gap)  + x;
-}
-my_canvas.width=data.length * (bar_gap)  + x +22;
-////////////end of settings ////
-gctx.moveTo(x-5,y);
-gctx.lineTo(my_canvas.width,y); // Base line of graph 
-gctx.stroke();
-/// add shadow ///
-gctx.shadowColor = '#000000';
-gctx.shadowOffsetX=3;
-gctx.shadowOffsetY=3;
-gctx.shadowBlur = 3;
-/////////// Draw the graph ////////
-
-for (i=0;i<data.length;i++){
-gctx.shadowColor = '#ffffff'; // remove this line if you shadow on text is required
-gctx.font = '15px serif'; // font for base label showing classes 
-gctx.textAlign='left';
-gctx.textBaseline='top';
-gctx.fillStyle= '#162252';
-gctx.fillText(data[i][0], x,y+5); // Write base text for classes 
-
-gctx.beginPath();
-gctx.lineWidth=2;
-y1=y-data[i][1]; // Coordinate for top of the Bar 
-x1 = x;    
-gctx.font = '12px serif'; // font at top of the bar 
-gctx.fillStyle= '#000000';
-gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); // text at top of the bar 
-
-gctx.fillStyle= '#2E5090'; // fill Colur of bar  
-gctx.shadowColor = '#000000'; // shadow color for bars 
-gctx.fillRect(x1,y1,bar_width,data[i][1]);// Filled bar 
-
-x=x+bar_gap
-
-}// end of for loop 
-
-</script>
+      </script>
 <?php 
-if($q_id==$noOfQues-1){
-	echo "</tr></table><table><tr>";
-}
-else if($q_id%2==0)
-{
-  echo "</tr><tr>";
-}
-
+          if($q_counter%2==0) {
+            echo "</tr><tr>";
+          }
+          $q_counter++;
+      } // Question loop
+?>
+</tr></table>
+<?php
+      if ($heading_max_possible_score > 0) {
+          $h_pct = ($heading_achieved_score / $heading_max_possible_score) * 100;
+          echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      }
+  } // Heading loop
 ?>
 
-
-<?php endwhile;?>
-</tr></table>
+<?php
+    if ($overall_max_possible_score > 0) {
+        $o_pct = ($overall_achieved_score / $overall_max_possible_score) * 100;
+        echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
+    }
+?>
 
 <?php
-echo "<br><p style=' text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation: </b><strong style='color:#162252; font-size: 20px; '>".number_format((float)$avg, 2, '.', '')."</strong></p><br>";
-
-
 if($status==0){
  $check = "SELECT comment FROM comment_midsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
  $res = $conn->query($check);
@@ -391,187 +385,181 @@ else if($sem==7 or $sem==8)
  ?>
  <table style="border-radius: 5px;"><tr>
   <?php
-  $sql = "SELECT q_id,question FROM question where course_type='$c' and acad_year='$acad_year'";
+  $sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+  $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
+          FROM question_set qs
+          JOIN question_heading h ON qs.id = h.question_set_id
+          JOIN feedback_question q ON h.id = q.heading_id
+          WHERE qs.code = '$c' AND qs.acad_year = '$acad_year' AND qs.semester = '$sem_parity'
+          ORDER BY h.heading_order ASC, q.question_order ASC";
   $result = $conn->query($sql);   
-  $noOfQues=$result->num_rows;
-  while($row=$result->fetch_assoc()):
-    $q_id=$row['q_id'];
-    $question=$row["question"];
+  $questions_by_heading = [];
+  while($row=$result->fetch_assoc()){
+      $questions_by_heading[$row['heading']][] = $row;
+  }
 
-    ?>
+  $overall_achieved_score = 0;
+  $overall_max_possible_score = 0;
 
+  foreach ($questions_by_heading as $heading => $questions) {
+      echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 20px;'>" . htmlspecialchars($heading) . "</h4>";
+      
+      $heading_achieved_score = 0;
+      $heading_max_possible_score = 0;
+      $q_counter = 1;
+?>
+<table style="border-radius: 5px; width: 100%;"><tr>
+<?php
+      foreach ($questions as $q) {
+          $q_id = $q['q_id'];
+          $question = $q['question'];
+          $is_text_input = $q['is_text_input'];
 
-    <!-- <div class="container" style="float: left; width: 40%; height: 350px;">-->
+          if ($is_text_input) continue;
 
-
-      <?php
-      $s2 = "SELECT `option` FROM options where course_type='$c' and acad_year='$acad_year' and q_id='$q_id'";
-      $res2 = $conn->query($s2);   
-      $noOfOptions=$res2->num_rows;
-      $options=array();
-      $optionName=array();
-      while($row2=$res2->fetch_assoc()){
-        $options[]=0;
-        $optionName[]=$row2["option"];
-      }
-      if($status==0){
-     
-        $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-        $n = $conn->query($m); 
-        if($n!== false && $n->num_rows>0)
-        {
-         $noOfStudents=$n->num_rows;
-
-        $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-        $res = $conn->query($check);   
-        while($response=$res->fetch_assoc()){
-          $options[(int)$response["response"]-1]++;
-
-        }
-
-        if($q_id==$noOfQues){
-
-
-          for($g=0;$g<count($options);$g++){
-
-            $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
+          $s2 = "SELECT option_number, option_text FROM feedback_option WHERE question_id='$q_id' ORDER BY option_number ASC";
+          $res2 = $conn->query($s2);   
+          $noOfOptions=$res2->num_rows;
+          $options=array();
+          $optionName=array();
+          $optionValues=array();
+          while($row2=$res2->fetch_assoc()){
+            $options[]=0;
+            $optionName[]=$row2["option_text"];
+            $optionValues[]=(int)$row2["option_number"];
           }
-          if($noOfStudents!=0)
-          $avg=$avg/$noOfStudents;
+          
+          $max_opt_val = empty($optionValues) ? 0 : max($optionValues);
+          $noOfStudents = 0;
 
+          if($status==0){
+            $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+            $n = $conn->query($m); 
+            if($n!== false && $n->num_rows>0) {          
+                $noOfStudents=$n->num_rows;
+                $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+                $res = $conn->query($check);   
+                while($response=$res->fetch_assoc()){
+                  $resp_val = (int)$response["response"];
+                  $idx = array_search($resp_val, $optionValues);
+                  if ($idx !== false) $options[$idx]++;
+                }
+            }
+          }
+          else{
+           $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+           $n = $conn->query($m); 
+           if($n!== false && $n->num_rows>0) {
+             $noOfStudents=$n->num_rows;
+             $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
+             $res = $conn->query($check);   
+             while($response=$res->fetch_assoc()){
+               $resp_val = (int)$response["response"];
+               $idx = array_search($resp_val, $optionValues);
+               if ($idx !== false) $options[$idx]++;
+             }
+           }
+          }
 
-        }
-       }
-      }
-      else{
-       $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-       $n = $conn->query($m); 
-       if($n!== false && $n->num_rows>0)
-       {
-           $noOfStudents=$n->num_rows;
+          $q_achieved = 0;
+          for($g=0; $g<count($options); $g++){
+             $q_achieved += $optionValues[$g] * $options[$g];
+          }
+          $heading_achieved_score += $q_achieved;
+          $heading_max_possible_score += ($max_opt_val * $noOfStudents);
+          
+          $overall_achieved_score += $q_achieved;
+          $overall_max_possible_score += ($max_opt_val * $noOfStudents);
+?>
+      <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
+        <?php echo "<br><b>".$question."</b><br>"; ?>
+        <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="50%" height="180" ></canvas> 
+      </td>
+      <script>
+        var my_canvas=document.getElementById(<?php echo json_encode($electiveName.$electiveID.$q_id)?>);
+        if(my_canvas) {
+          var gctx=my_canvas.getContext("2d");
 
-       $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
-       $res = $conn->query($check);   
-       while($response=$res->fetch_assoc()){
-        $options[(int)$response["response"]-1]++;
-
-      }
-
-      if($q_id==$noOfQues){
-
-
-        for($g=0;$g<count($options);$g++){
-
-          $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
-        }
-        if($noOfStudents!=0)
-        $avg=$avg/$noOfStudents;
-
-
-      }
-     }
-    }
-
-    ?>
-
-
-
-    <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
-      <?php echo "<br><b>".$question."</b><br>";  ?>
-      <canvas id='<?php echo $electiveName. $electiveID.$q_id ?>' width="50%" height="180" ></canvas> 
-    </td>
-    <script>
-      var my_canvas=document.getElementById(<?php echo json_encode($electiveName. $electiveID.$q_id)?>);
-      var gctx=my_canvas.getContext("2d");
-
-      var noOfOptions=<?php echo json_encode($noOfOptions)?>;
-      var options=<?php echo json_encode($options)?>;
-      var optionName=<?php echo json_encode($optionName)?>;
-      var noOfStudents=<?php echo json_encode($noOfStudents)?>;
-      var q_id=<?php echo json_encode($q_id)?>;
-      var noOfQues=<?php echo json_encode($noOfQues)?>;
-      var data=[];
-      for(var m=0;m<noOfOptions;m++){
-        data[m]=[optionName[m],(options[m]/noOfStudents)*100];
+          var noOfOptions=<?php echo json_encode($noOfOptions)?>;
+          var options=<?php echo json_encode($options)?>;
+          var optionName=<?php echo json_encode($optionName)?>;
+          var noOfStudents=<?php echo json_encode($noOfStudents)?>;
+          var q_id=<?php echo json_encode($q_id)?>;
+          var q_counter=<?php echo json_encode($q_counter)?>;
+          var data=[];
+          for(var m=0;m<noOfOptions;m++){
+            data[m]=[optionName[m], noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
+          }
         
-      }
+          if(q_counter%2==0){
+            my_canvas.style.styleFloat="clear";
+          }
 
-      if(q_id%2==0){
-        my_canvas.style.styleFloat="clear";
-      }
+          var bar_width=30;
+          var y_gap=30;
+          var bar_gap=100;
+          var x= 15; 
 
+          var y = my_canvas.height - y_gap;
+          my_canvas.width = data.length * bar_gap + x + 22;
 
+          gctx.moveTo(x-5,y);
+          gctx.lineTo(my_canvas.width,y); 
+          gctx.stroke();
 
-      var bar_width=30;
-var y_gap=30;  // Gap below the graph 
-var bar_gap=100; // Gap between Bars including width of the bar
-var x= 15; // Margin of graph from left  
+          gctx.shadowColor = '#000000';
+          gctx.shadowOffsetX=3;
+          gctx.shadowOffsetY=3;
+          gctx.shadowBlur = 3;
 
-y=my_canvas.height -y_gap ;
-if(q_id==noOfQues){
-  bar_gap=50;
-  my_canvas.width=data.length * (  bar_gap)  + x;
-}
-my_canvas.width=data.length * (  bar_gap)  + x +22;
-////////////end of settings ////
-gctx.moveTo(x-5,y);
-gctx.lineTo(my_canvas.width,y); // Base line of graph 
-gctx.stroke();
-/// add shadow ///
-gctx.shadowColor = '#000000';
-gctx.shadowOffsetX=3;
-gctx.shadowOffsetY=3;
-gctx.shadowBlur = 3;
-/////////// Draw the graph ////////
+          for (var i=0;i<data.length;i++){
+            gctx.shadowColor = '#ffffff'; 
+            gctx.font = '15px serif'; 
+            gctx.textAlign='left';
+            gctx.textBaseline='top';
+            gctx.fillStyle= '#162252';
+            gctx.fillText(data[i][0], x,y+5); 
 
-for (i=0;i<data.length;i++){
-gctx.shadowColor = '#ffffff'; // remove this line if you shadow on text is required
-gctx.font = '15px serif'; // font for base label showing classes 
-gctx.textAlign='left';
-gctx.textBaseline='top';
-gctx.fillStyle= '#162252';
-gctx.fillText(data[i][0], x,y+5); // Write base text for classes 
+            gctx.beginPath();
+            gctx.lineWidth=2;
+            var y1 = y - data[i][1]; 
+            var x1 = x;    
+            gctx.font = '12px serif'; 
+            gctx.fillStyle= '#000000';
+            gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
 
-gctx.beginPath();
-gctx.lineWidth=2;
-y1=y-data[i][1]; // Coordinate for top of the Bar 
-x1 = x;    
-gctx.font = '12px serif'; // font at top of the bar 
-gctx.fillStyle= '#000000';
-gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); // text at top of the bar 
+            gctx.fillStyle= '#2E5090'; 
+            gctx.shadowColor = '#000000'; 
+            gctx.fillRect(x1,y1,bar_width,data[i][1]);
 
-gctx.fillStyle= '#2E5090'; // fill Colur of bar  
-gctx.shadowColor = '#000000'; // shadow color for bars 
-gctx.fillRect(x1,y1,bar_width,data[i][1]);// Filled bar 
-
-x=x+bar_gap
-
-}// end of for loop 
-
-</script>
+            x=x+bar_gap;
+          }
+        }
+      </script>
 <?php 
-if($q_id==$noOfQues-1){
-  echo "</tr></table><table><tr>";
-}
-else if($q_id%2==0)
-{
-  echo "</tr><tr>";
-}
-
+          if($q_counter%2==0) {
+            echo "</tr><tr>";
+          }
+          $q_counter++;
+      } // Question loop
+?>
+</tr></table>
+<?php
+      if ($heading_max_possible_score > 0) {
+          $h_pct = ($heading_achieved_score / $heading_max_possible_score) * 100;
+          echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      }
+  } // Heading loop
 ?>
 
+<?php
+    if ($overall_max_possible_score > 0) {
+        $o_pct = ($overall_achieved_score / $overall_max_possible_score) * 100;
+        echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
+    }
+?>
 
-<?php endwhile;?>
-</tr></table>
-
-
-
-
-
-
-<?php echo "<br><p style=' text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation: </b><strong style='color:#162252; font-size: 20px; '>".number_format((float)$avg, 2, '.', '')."</strong></p><br>";
-
-
+<?php
 if($status==0){
  $check = "SELECT comment FROM comment_midsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".implode(',',$roll_no).")";
  $res = $conn->query($check);

@@ -155,7 +155,7 @@ if($flag==0):
 				$c='TH';
 
 			$sem_num = isset($_SESSION["sem"]) ? $_SESSION["sem"] : 1;
-			$sem_parity = ($sem_num % 2 == 0) ? 'Even' : 'Odd';
+			$sem_parity = ($sem_num % 2 == 0) ? 2 : 1;
 
 			$sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input 
 					FROM question_set qs
@@ -185,7 +185,7 @@ if($flag==0):
 						<br/>
 						<div class="panel panel-primary">
 							<div class="panel-heading" > 
-								<p  style="text-align: left; font-size: 20px; margin: 0em; font-family: sans-serif">Question:&nbsp;<b id="q_id"><?= $q_counter ?></b></p> <br>  
+								<p  style="text-align: left; font-size: 20px; margin: 0em; font-family: sans-serif">Question:&nbsp;<b><?= $q_counter ?></b><b id="q_id" style="display:none;"><?= $q_id ?></b></p> <br>  
 								<p id="question" style="text-align: left; font-size: 20px; margin-top: -20px; word-break: keep-all; font-family: sans-serif"> <?= htmlspecialchars($row['question'])." *" ?></p>
 
 							</div><!--.panel-heading-->

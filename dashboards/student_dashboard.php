@@ -845,6 +845,13 @@ faculty=<?php echo json_encode($faculty);?>;
        var s=$(this).find("input[name="+q+"]:checked").val();
        if(s==null)
        {
+          var textInput = $(this).find("input[name="+q+"][type=text]").val();
+          if (textInput != null && textInput.trim() != "") {
+             s = textInput;
+          }
+       }
+       if(s==null)
+       {
 
        }else{
         counter=counter+1;
@@ -896,6 +903,9 @@ faculty=<?php echo json_encode($faculty);?>;
 
      var q=$(this).find("#q_id").html();
      var s=$(this).find("input[name="+q+"]:checked").val();
+     if(s==null) {
+       s = $(this).find("input[name="+q+"][type=text]").val();
+     }
 
 
      $.post(

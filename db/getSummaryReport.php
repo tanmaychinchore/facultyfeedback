@@ -56,85 +56,72 @@ if($course_code[0]=='L')
 elseif ($course_code[0]=='T') 
     $c='TH';
 
-$avg=0;
-    $sql = "SELECT q_id,question FROM question where course_type='$c' and acad_year='$year'";
-    $result = $conn->query($sql);   
-    $noOfQues=$result->num_rows;
-    while($row=$result->fetch_assoc()):
-      $q_id=$row['q_id'];
-      $question=$row["question"];
+$sem_parity = ($sem % 2 == 0) ? 'Even' : 'Odd';
+$overall_achieved = 0;
+$overall_max = 0;
+$sql = "SELECT q.id as q_id, q.question_text as question, q.is_text_input
+        FROM question_set qs
+        JOIN question_heading h ON qs.id = h.question_set_id
+        JOIN feedback_question q ON h.id = q.heading_id
+        WHERE qs.code = '$c' AND qs.acad_year = '$year' AND qs.semester = '$sem_parity'";
+$result = $conn->query($sql);   
+while($row=$result->fetch_assoc()):
+    $q_id = $row['q_id'];
+    if ($row['is_text_input']) continue;
 
-      $s2 = "SELECT `option` FROM options where course_type='$c' and acad_year='$year' and q_id='$q_id'";
-        $res2 = $conn->query($s2);   
-        $noOfOptions=$res2->num_rows;
-        $options=array();
-        $optionName=array();
-        while($row2=$res2->fetch_assoc()){
-          $options[]=0;
-          $optionName[]=$row2["option"];
+    $s2 = "SELECT option_number FROM feedback_option WHERE question_id='$q_id'";
+    $res2 = $conn->query($s2);   
+    $optionValues=array();
+    $options=array();
+    while($row2=$res2->fetch_assoc()){
+        $optionValues[]=(int)$row2["option_number"];
+        $options[]=0;
+    }
+    
+    $max_opt_val = empty($optionValues) ? 0 : max($optionValues);
+    $noOfStudents = 0;
+
+    if($status==0){
+        $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
+        $n = $conn->query($m); 
+        $noOfStudents=$n->num_rows;
+
+        $check = "SELECT response FROM response_midsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
+        $res = $conn->query($check);   
+        while($response=$res->fetch_assoc()){
+            $resp_val = (int)$response["response"];
+            $idx = array_search($resp_val, $optionValues);
+            if ($idx !== false) $options[$idx]++;
         }
+    }
+    else{
+        $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
+        $n = $conn->query($m); 
+        $noOfStudents=$n->num_rows;
 
-        if($status==0){
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
-          $n = $conn->query($m); 
-          $noOfStudents=$n->num_rows;
-
-          $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
-          $res = $conn->query($check);   
-          while($response=$res->fetch_assoc()){
-            $options[(int)$response["response"]-1]++;
-
-          }
-
-          if($q_id==$noOfQues){
-
-
-            for($g=0;$g<count($options);$g++){
-
-              $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
-            }
-            if($noOfStudents > 0)
-              $avg=$avg/$noOfStudents;
-
-
-          }
+        $check = "SELECT response FROM response_endsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
+        $res = $conn->query($check);   
+        while($response=$res->fetch_assoc()){
+            $resp_val = (int)$response["response"];
+            $idx = array_search($resp_val, $optionValues);
+            if ($idx !== false) $options[$idx]++;
         }
-        else{
-         $m = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
-         $n = $conn->query($m); 
-         $noOfStudents=$n->num_rows;
+    }
+    
+    for($g=0; $g<count($options); $g++){
+        $overall_achieved += $optionValues[$g] * $options[$g];
+    }
+    $overall_max += ($max_opt_val * $noOfStudents);
+endwhile;
 
-         $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$course_code' and f_id='$f_id' and acad_year='$year' and sem_type='$sem_type'";
-         $res = $conn->query($check);   
-         while($response=$res->fetch_assoc()){
-          $options[(int)$response["response"]-1]++;
-
-        }
-
-        if($q_id==$noOfQues){
-
-
-          for($g=0;$g<count($options);$g++){
-
-            $avg=$avg+((int)$optionName[$g]*(int)$options[$g]);
-          }
-          $avg=$avg/$noOfStudents;
-
-
-        }
-      }
-    endwhile;
-
+$avg_display = $overall_max > 0 ? number_format(($overall_achieved / $overall_max) * 100, 2) . "%" : "0%";
 ?>
 
 <tr id="hdsj">
-    
-        
     <td id="f_id"><?= $f_id ?></td>
     <td id="fname"><?= $fname.' '.$lname ?></td>
     <td id="cname"><?= $cname ?></td>
-    <td id="avg"><?= $avg ?></td>
-
+    <td id="avg"><?= $avg_display ?></td>
 </tr>
 <?php 
      
