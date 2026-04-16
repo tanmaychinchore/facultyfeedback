@@ -2342,6 +2342,8 @@ while($r=$res->fetch_assoc()){
 			<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 			<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 			<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+			<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+			<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 		</select>
 		<script type="text/javascript">
 		$(".select_class_for_mail").change( function() {
@@ -2747,8 +2749,9 @@ while($r=$res->fetch_assoc()){
 					<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 					<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 					<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+					<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+					<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 					
-
 				</select>
 				
 				<script type="text/javascript">
@@ -2864,7 +2867,7 @@ while($r=$res->fetch_assoc()){
 			</div>
 		</div>
 		<br><br>
-		<b>Precede the course codes with "TH_" for theory courses and "L_" for Lab courses</b>
+		<b>Precede the course codes with "TH_" for theory courses, "TU_" for tutorial courses and "L_" for Lab courses</b>
 		<br><br>
 		<div id="tableElective">
 		</div>
@@ -2946,6 +2949,8 @@ while($r=$res->fetch_assoc()){
 				<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 				<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 				<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+				<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+			    <option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 			</select>
 			</select>
 			<script type="text/javascript">
@@ -3639,6 +3644,8 @@ while($r=$res->fetch_assoc()){
 											<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 											<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 											<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+											<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+											<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 										</select>
 										<script type="text/javascript">
 											$(".select_class_for_edit").change( function() {
@@ -3852,6 +3859,8 @@ while($r=$res->fetch_assoc()){
 											<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 											<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 											<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+											<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+											<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 										</select>
 									</div> 
 									<button  id="deleteStudent"type="button" name="delete" value="1" class="btn-primary">Remove Students</button>
@@ -3878,6 +3887,8 @@ while($r=$res->fetch_assoc()){
 												<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 												<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 												<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+												<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+												<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 											</select>
 											<select name="section" id="student_section">
 												<option disabled selected value value="base">Choose Section</option>
@@ -3984,6 +3995,8 @@ while($r=$res->fetch_assoc()){
 														<option value="MTech VLSI" <?php if($dept_id!=8){ ?> hidden <?php } ?>>MTech VLSI</option>
 														<option value="MTech EXCP" <?php if($dept_id!=9){ ?> hidden <?php } ?>>MTech EXCP</option>
 														<option value="MTech Energy" <?php if($dept_id!=10){ ?> hidden <?php } ?>>MTech Energy</option>
+														<option value="MTech CCE" <?php if($dept_id!=11){ ?> hidden <?php } ?>>MTech CCE</option>
+														<option value="MTech AIDS" <?php if($dept_id!=12){ ?> hidden <?php } ?>>MTech AIDS</option>
 													</select>
 													<select name="section" id="student_section2">
 														<option disabled selected value value="base">Choose Section</option>
@@ -4274,5 +4287,3 @@ while($r=$res->fetch_assoc()){
 					<!--Outer div ends-->
 				</body>
 				</html>
-
-

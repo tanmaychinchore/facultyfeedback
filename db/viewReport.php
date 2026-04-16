@@ -7,6 +7,78 @@
 		});
     
 	</script>
+<style>
+    .report-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        width: 100%;
+    }
+    .report-card {
+        flex: 0 1 calc(50% - 10px); /* Don't grow to fill line, keep to half side */
+        max-width: calc(50% - 10px);
+        min-width: 300px;
+        border: 0.5px solid #162252;
+        padding: 15px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center content like graphs and percentages */
+    }
+    @media (max-width: 768px) {
+        .report-card {
+            flex: 1 1 100%;
+        }
+    }
+    .question-text {
+        font-weight: bold;
+        text-align: left;
+        margin-bottom: 20px;
+        color: #162252;
+        width: 100%; /* Ensure question stays left-aligned across full width */
+        align-self: flex-start;
+    }
+    .percentage-text {
+        margin-top: 15px;
+        color: #162252;
+        font-weight: bold;
+        text-align: center;
+        width: 100%;
+    }
+    .heading-average {
+        margin-top: 30px;
+        margin-bottom: 30px;
+        text-align: center;
+        width: 100%;
+    }
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+</style>
+<script>
+function wrapText(context, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' ');
+    var line = '';
+
+    for(var n = 0; n < words.length; n++) {
+        var testLine = line + words[n] + ' ';
+        var metrics = context.measureText(testLine);
+        var testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+            context.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+        }
+        else {
+            line = testLine;
+        }
+    }
+    context.fillText(line, x, y);
+}
+</script>
 <?php
 session_start();
 include ('../config/db_config.php');
@@ -127,10 +199,18 @@ while($res2=$r2->fetch_assoc()):
   else
     echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>".$class."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
   echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$sem."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-  echo "<b style='font-size: 18px;'>Section/ Batch: </b><strong style='color:#162252;font-size: 16px;'>".$section_or_batch."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
+  echo "<b style='font-size: 18px;'>Section/ Batch: </b><strong style='color:#162252;font-size: 16px;'>".$section_or_batch."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
+
+  $resp_table = ($status == 0) ? 'response_midsem' : 'response_endsem';
+  $resp_sql = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$c_id' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+  $resp_res = $conn->query($resp_sql);
+  $resp_row = ($resp_res) ? $resp_res->fetch_assoc() : null;
+  $total_responded = ($resp_row) ? $resp_row['total_resp'] : 0;
+
+  echo "<b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_responded."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
   $avg=0;
-  ?>
-  <table style="border-radius: 5px;"><tr>
+?>
+  <div class="report-container">
     <?php
   $sem_parity = ($sem % 2 == 0) ? 2 : 1;
   $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
@@ -149,13 +229,18 @@ while($res2=$r2->fetch_assoc()):
   $overall_max_possible_score = 0;
 
   foreach ($questions_by_heading as $heading => $questions) {
+      $has_numerical = false;
+      foreach($questions as $q) { if(!$q['is_text_input']) { $has_numerical = true; break; } }
+      if (!$has_numerical) continue;
+
       echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 20px;'>" . htmlspecialchars($heading) . "</h4>";
       
       $heading_achieved_score = 0;
       $heading_max_possible_score = 0;
       $q_counter = 1;
 ?>
-<table style="border-radius: 5px; width: 100%;"><tr>
+<div class="report-grid">
+
 <?php
       foreach ($questions as $q) {
           $q_id = $q['q_id'];
@@ -217,126 +302,122 @@ while($res2=$r2->fetch_assoc()):
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
-          $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
+           $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
 ?>
-      <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
-        <?php echo "<br><b>".$question."</b><br>"; ?>
-        <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="50%" height="180" ></canvas> 
+      <div class="report-card">
+        <div class="question-text"><?= htmlspecialchars($question) ?></div>
+        <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="400" height="220" ></canvas> 
         <?php if($noOfStudents > 0): ?>
-            <br><b style='color:#162252;'>Percentage: <?= number_format($q_pct, 2) ?>%</b>
+            <div class="percentage-text">Percentage: <?= number_format($q_pct, 2) ?>%</div>
         <?php endif; ?>
-      </td>
+      </div>
       <script>
-        var my_canvas=document.getElementById(<?php echo json_encode($c.$cname. $section_or_batch.$q_id)?>);
-        if(my_canvas) {
-          var gctx=my_canvas.getContext("2d");
+        (function() {
+          var my_canvas=document.getElementById(<?php echo json_encode($c.$cname. $section_or_batch.$q_id)?>);
+          if(my_canvas) {
+            var gctx=my_canvas.getContext("2d");
 
-          var noOfOptions=<?php echo json_encode($noOfOptions)?>;
-          var options=<?php echo json_encode($options)?>;
-          var optionName=<?php echo json_encode($optionName)?>;
-          var noOfStudents=<?php echo json_encode($noOfStudents)?>;
-          var q_id=<?php echo json_encode($q_id)?>;
-          var q_counter=<?php echo json_encode($q_counter)?>;
-          var data=[];
-          for(var m=0;m<noOfOptions;m++){
-            data[m]=[optionName[m], noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
-          }
-        
-          if(q_counter%2==0){
-            my_canvas.style.styleFloat="clear";
-          }
-
-          var bar_width=30;
-          var y_gap=30;
-          var bar_gap=100;
-          var x= 15; 
-
-          var y = my_canvas.height - y_gap;
-          my_canvas.width = data.length * bar_gap + x + 22;
-
-          gctx.moveTo(x-5,y);
-          gctx.lineTo(my_canvas.width,y); 
-          gctx.stroke();
-
-          gctx.shadowColor = '#000000';
-          gctx.shadowOffsetX=3;
-          gctx.shadowOffsetY=3;
-          gctx.shadowBlur = 3;
-
-          for (var i=0;i<data.length;i++){
-            gctx.shadowColor = '#ffffff'; 
-            gctx.font = '15px serif'; 
-            gctx.textAlign='left';
-            gctx.textBaseline='top';
-            gctx.fillStyle= '#162252';
-            gctx.fillText(data[i][0], x,y+5); 
-
-            gctx.beginPath();
-            gctx.lineWidth=2;
-            var y1 = y - data[i][1]; 
-            var x1 = x;    
-            gctx.font = '12px serif'; 
-            gctx.fillStyle= '#000000';
-            if (noOfStudents > 0) {
-                gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            var noOfOptions=<?php echo json_encode($noOfOptions)?>;
+            var options=<?php echo json_encode($options)?>;
+            var optionName=<?php echo json_encode($optionName)?>;
+            var optionValues=<?php echo json_encode($optionValues)?>;
+            var noOfStudents=<?php echo json_encode($noOfStudents)?>;
+            
+            var data=[];
+            for(var m=0;m<noOfOptions;m++){
+              // Label: Number - Text
+              var label = optionValues[m] + " - " + optionName[m];
+              data[m]=[label, noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
             }
+          
+            var bar_width=30;
+            var y_gap=60; // Increased for multi-line labels
+            var bar_gap=80;
+            var x= 20; 
 
-            gctx.fillStyle= '#2E5090'; 
-            gctx.shadowColor = '#000000'; 
-            gctx.fillRect(x1,y1,bar_width,data[i][1]);
+            var y = my_canvas.height - y_gap;
+            my_canvas.width = data.length * bar_gap + x + 20;
 
-            x=x+bar_gap;
+            gctx.moveTo(x-5,y);
+            gctx.lineTo(my_canvas.width,y); 
+            gctx.stroke();
+
+            for (var i=0;i<data.length;i++){
+              gctx.font = '12px Arial'; 
+              gctx.textAlign='center';
+              gctx.textBaseline='top';
+              gctx.fillStyle= '#162252';
+              
+              var centerX = x + (bar_width / 2);
+              
+              // Wrap text to avoid overlap, centered under bar
+              wrapText(gctx, data[i][0], centerX, y + 5, bar_gap - 10, 14);
+
+              gctx.beginPath();
+              var y1 = y - (data[i][1] * 1.2); // Scale a bit for visibility
+              var x1 = x;    
+              
+              if (noOfStudents > 0) {
+                  gctx.fillStyle= '#000000';
+                  // Percentage text centered above bar
+                  gctx.fillText(data[i][1].toFixed(1)+"%", centerX, y1-20); 
+              }
+
+              gctx.fillStyle= '#2E5090'; 
+              gctx.fillRect(x1, y1, bar_width, (data[i][1] * 1.2));
+
+              x=x+bar_gap;
+            }
           }
-        }
+        })();
       </script>
 <?php 
-          if($q_counter%2==0) {
-            echo "</tr><tr>";
-          }
           $q_counter++;
       } // Question loop
 ?>
-</tr></table>
+</div>
+
 <?php
-      $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
-      echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
-  } // Heading loop
+            $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
+      if ($heading_max_possible_score > 0) {
+          echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      }
+  } // End Numerical headings loop
 ?>
 
+<div class="comments-section">
+  <?php
+  // 2. Open-Ended Heading + Comments
+  foreach ($questions_by_heading as $heading => $questions) {
+      $has_text = false;
+      foreach($questions as $q) { if($q['is_text_input']) { $has_text = true; break; } }
+      
+      if($has_text) {
+          echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 30px;'>" . htmlspecialchars($heading) . "</h4>";
+          
+          $comm_table = ($status == 0) ? 'comment_midsem' : 'comment_endsem';
+          $c_sql = "SELECT comment FROM $comm_table WHERE course_code='$c_id' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+          $c_res = $conn->query($c_sql);
+          if($c_res && $c_res->num_rows > 0) {
+              while($cr = $c_res->fetch_assoc()) {
+                  $txt = trim($cr['comment']);
+                  if(!$txt || in_array(strtolower($txt), ['-','--','na','none','nil','.','..'])) continue;
+                  echo "<b>- ".htmlspecialchars($txt)."</b><br>";
+              }
+          } else {
+              echo "<i>No comments recorded.</i><br>";
+          }
+      }
+  }
+  ?>
+</div>
 <?php
     $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
-    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
-?>
+    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p>";
+    echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
 
-<?php
-if($status==0){
- $check = "SELECT comment FROM comment_midsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
- $res = $conn->query($check);
- if($res!== false && $res->num_rows>0)
- { 
- echo "<b>Suggestions/ Comments<b><br>";   
-while($comment=$res->fetch_assoc()){
-    if($comment["comment"]=="" or $comment["comment"] =="." or $comment["comment"] ==".." or $comment["comment"] =="_" or $comment["comment"] =="-" or $comment["comment"] ==" " or $comment["comment"]=="NA" or $comment["comment"]=="na" or $comment["comment"] == "none")
-      continue;
-    echo "<b>- ".$comment["comment"]."</b><br>";
-    
-  }
- }
-}else{
-   $check = "SELECT comment FROM comment_endsem where course_code='$c_id' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
- $res = $conn->query($check);
- if($res!== false && $res->num_rows>0)
- { 
- echo "<b>Suggestions/ Comments<b><br>";   
-while($comment=$res->fetch_assoc()){
-    if($comment["comment"]=="" or $comment["comment"] =="." or $comment["comment"] ==".." or $comment["comment"] =="_" or $comment["comment"] =="-" or $comment["comment"] ==" " or $comment["comment"]=="NA" or $comment["comment"]=="na" or $comment["comment"] == "none")
-      continue;
-    echo "<b>- ".$comment["comment"]."</b><br>";
-    
-  }
- }
-}
-echo "<hr><br>";
+    echo "</div>"; // end report-container
+    echo "<hr><br>";
 endwhile;
 ?>
 
@@ -393,11 +474,18 @@ while($res2=$r2->fetch_assoc()):
 else if($sem==7 or $sem==8)
    echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>LY</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
 
- echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$sem."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
+  echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$sem."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
 
- $avg=0;
- ?>
- <table style="border-radius: 5px;"><tr>
+  $resp_table = ($status == 0) ? 'response_midsem' : 'response_endsem';
+  $resp_sql = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$electiveID' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+  $resp_res = $conn->query($resp_sql);
+  $resp_row = ($resp_res) ? $resp_res->fetch_assoc() : null;
+  $total_responded = ($resp_row) ? $resp_row['total_resp'] : 0;
+
+  echo "<b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_responded."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
+  $avg=0;
+?>
+  <div class="report-container">
   <?php
   $sem_parity = ($sem % 2 == 0) ? 2 : 1;
   $sql = "SELECT q.id as q_id, q.question_text as question, h.heading, q.is_text_input
@@ -416,13 +504,17 @@ else if($sem==7 or $sem==8)
   $overall_max_possible_score = 0;
 
   foreach ($questions_by_heading as $heading => $questions) {
+      $has_num_e = false;
+      foreach($questions as $qe) { if(!$qe['is_text_input']) { $has_num_e = true; break; } }
+      if (!$has_num_e) continue;
+
       echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 20px;'>" . htmlspecialchars($heading) . "</h4>";
       
       $heading_achieved_score = 0;
       $heading_max_possible_score = 0;
       $q_counter = 1;
 ?>
-<table style="border-radius: 5px; width: 100%;"><tr>
+  <div class="report-grid">
 <?php
       foreach ($questions as $q) {
           $q_id = $q['q_id'];
@@ -484,129 +576,115 @@ else if($sem==7 or $sem==8)
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
-          $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
+           $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
 ?>
-      <td style="width: 50%; text-align: center; border:0.5px solid #162252 ;padding: 5px; background-color: #f5f5f5 ">
-        <?php echo "<br><b>".$question."</b><br>"; ?>
-        <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="50%" height="180" ></canvas> 
+      <div class="report-card">
+        <div class="question-text"><?= htmlspecialchars($question) ?></div>
+        <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="400" height="220" ></canvas> 
         <?php if($noOfStudents > 0): ?>
-            <br><b style='color:#162252;'>Percentage: <?= number_format($q_pct, 2) ?>%</b>
+            <div class="percentage-text">Percentage: <?= number_format($q_pct, 2) ?>%</div>
         <?php endif; ?>
-      </td>
+      </div>
       <script>
-        var my_canvas=document.getElementById(<?php echo json_encode($electiveName.$electiveID.$q_id)?>);
-        if(my_canvas) {
-          var gctx=my_canvas.getContext("2d");
+        (function() {
+          var my_canvas=document.getElementById(<?php echo json_encode($electiveName.$electiveID.$q_id)?>);
+          if(my_canvas) {
+            var gctx=my_canvas.getContext("2d");
 
-          var noOfOptions=<?php echo json_encode($noOfOptions)?>;
-          var options=<?php echo json_encode($options)?>;
-          var optionName=<?php echo json_encode($optionName)?>;
-          var noOfStudents=<?php echo json_encode($noOfStudents)?>;
-          var q_id=<?php echo json_encode($q_id)?>;
-          var q_counter=<?php echo json_encode($q_counter)?>;
-          var data=[];
-          for(var m=0;m<noOfOptions;m++){
-            data[m]=[optionName[m], noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
-          }
-        
-          if(q_counter%2==0){
-            my_canvas.style.styleFloat="clear";
-          }
-
-          var bar_width=30;
-          var y_gap=30;
-          var bar_gap=100;
-          var x= 15; 
-
-          var y = my_canvas.height - y_gap;
-          my_canvas.width = data.length * bar_gap + x + 22;
-
-          gctx.moveTo(x-5,y);
-          gctx.lineTo(my_canvas.width,y); 
-          gctx.stroke();
-
-          gctx.shadowColor = '#000000';
-          gctx.shadowOffsetX=3;
-          gctx.shadowOffsetY=3;
-          gctx.shadowBlur = 3;
-
-          for (var i=0;i<data.length;i++){
-            gctx.shadowColor = '#ffffff'; 
-            gctx.font = '15px serif'; 
-            gctx.textAlign='left';
-            gctx.textBaseline='top';
-            gctx.fillStyle= '#162252';
-            gctx.fillText(data[i][0], x,y+5); 
-
-            gctx.beginPath();
-            gctx.lineWidth=2;
-            var y1 = y - data[i][1]; 
-            var x1 = x;    
-            gctx.font = '12px serif'; 
-            gctx.fillStyle= '#000000';
-            if (noOfStudents > 0) {
-                gctx.fillText(data[i][1].toFixed(1)+"%", x1,y1-20); 
+            var noOfOptions=<?php echo json_encode($noOfOptions)?>;
+            var options=<?php echo json_encode($options)?>;
+            var optionName=<?php echo json_encode($optionName)?>;
+            var optionValues=<?php echo json_encode($optionValues)?>;
+            var noOfStudents=<?php echo json_encode($noOfStudents)?>;
+            
+            var data=[];
+            for(var m=0;m<noOfOptions;m++){
+              var label = optionValues[m] + " - " + optionName[m];
+              data[m]=[label, noOfStudents > 0 ? (options[m]/noOfStudents)*100 : 0];
             }
+          
+            var bar_width=30;
+            var y_gap=60;
+            var bar_gap=80;
+            var x= 20; 
 
-            gctx.fillStyle= '#2E5090'; 
-            gctx.shadowColor = '#000000'; 
-            gctx.fillRect(x1,y1,bar_width,data[i][1]);
+            var y = my_canvas.height - y_gap;
+            my_canvas.width = data.length * bar_gap + x + 20;
 
-            x=x+bar_gap;
+            gctx.moveTo(x-5,y);
+            gctx.lineTo(my_canvas.width,y); 
+            gctx.stroke();
+
+            for (var i=0;i<data.length;i++){
+              gctx.font = '12px Arial'; 
+              gctx.textAlign='center';
+              gctx.textBaseline='top';
+              gctx.fillStyle= '#162252';
+
+              var centerX = x + (bar_width / 2);
+
+              wrapText(gctx, data[i][0], centerX, y + 5, bar_gap - 10, 14);
+
+              gctx.beginPath();
+              var y1 = y - (data[i][1] * 1.2);
+              var x1 = x;    
+              if (noOfStudents > 0) {
+                  gctx.fillStyle= '#000000';
+                  gctx.fillText(data[i][1].toFixed(1)+"%", centerX, y1-20); 
+              }
+              gctx.fillStyle= '#2E5090'; 
+              gctx.fillRect(x1, y1, bar_width, (data[i][1] * 1.2));
+              x=x+bar_gap;
+            }
           }
-        }
+        })();
       </script>
 <?php 
-          if($q_counter%2==0) {
-            echo "</tr><tr>";
-          }
           $q_counter++;
       } // Question loop
 ?>
-</tr></table>
-<?php
-      $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
-      echo "<p style='text-align:center;'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
-  } // Heading loop
-?>
+</div>
 
 <?php
-    $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
-    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p><br>";
+            $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
+      if ($heading_max_possible_score > 0) {
+          echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      }
+  } // End Numerical headings loop
 ?>
 
-<?php
-if($status==0){
- $check = "SELECT comment FROM comment_midsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
- $res = $conn->query($check);
- if($res!== false && $res->num_rows>0)
-  {
-    echo "<b>Suggestions/ Comments<b><br>"; 
-    while($comment=$res->fetch_assoc()){
-        if($comment["comment"]=="" or $comment["comment"] ==" " or $comment["comment"]=="NA" or $comment["comment"]=="na" or $comment["comment"] == "none")
-          continue;
-        echo "<b>- ".$comment["comment"]."</b><br>";
-        
+<div class="comments-section">
+  <?php
+  // 2. Open-Ended Heading + Comments
+  foreach ($questions_by_heading as $h_e => $questions_e) {
+      $has_text = false;
+      foreach($questions_e as $qe) { if($qe['is_text_input']) { $has_text = true; break; } }
+      
+      if($has_text) {
+          echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px; margin-top: 30px;'>" . htmlspecialchars($h_e) . "</h4>";
+          
+          $ce_sql = "SELECT comment FROM $comm_table WHERE course_code='$electiveID' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+          $ce_res = $conn->query($ce_sql);
+          if($ce_res && $ce_res->num_rows > 0) {
+              while($cer = $ce_res->fetch_assoc()) {
+                  $txt = trim($cer['comment']);
+                  if(!$txt || in_array(strtolower($txt), ['-','--','na','none','nil','.','..'])) continue;
+                  echo "<b>- ".htmlspecialchars($txt)."</b><br>";
+              }
+          } else {
+              echo "<i>No comments recorded.</i><br>";
+          }
       }
   }
+  ?>
+</div>
+<?php
+    $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
+    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p>";
+    echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
 
-}else{
-   $check = "SELECT comment FROM comment_endsem where course_code='$electiveID' and f_id='$f_id' and acad_year='$acad_year' and sem_type='$sem_type' and roll_no in(".$roll_no_list.")";
- $res = $conn->query($check);
- if($res!== false && $res->num_rows>0)
-  {
-      echo "<b>Suggestions/ Comments<b><br>";   
-        
-      while($comment=$res->fetch_assoc()){
-          if($comment["comment"]=="" or $comment["comment"] ==" " or $comment["comment"]=="NA" or $comment["comment"]=="na" or $comment["comment"] == "none")
-            continue;
-          echo "<b>- ".$comment["comment"]."</b><br>";
-          
-        }
-  }
-}
-
-echo "<hr><br>";
+    echo "</div>"; // end report-container
+    echo "<hr><br>";
 endwhile;
 ?>
 

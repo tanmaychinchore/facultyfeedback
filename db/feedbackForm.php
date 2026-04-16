@@ -155,7 +155,7 @@ if($flag==0):
 				$c = 'LAB';
 			} elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false) {
 				$c = 'TU';
-			} elseif ($code_upper[0] == 'T' || strpos($code_upper, 'TH') !== false) {
+			} elseif ($code_upper[0] == 'TH' || strpos($code_upper, 'TH') !== false) {
 				$c = 'TH';
 			}
 
@@ -226,7 +226,7 @@ if($flag==0):
 							
 							<ul class = "list-group" >
 								<?php
-								$sql2 = "SELECT option_number as option_no, option_text as `option` FROM feedback_option WHERE question_id=$q_id ORDER BY option_number ASC";
+								$sql2 = "SELECT option_number as option_no, option_text as `option` FROM feedback_option WHERE question_id=$q_id ORDER BY option_number DESC";
 								$result2 = $conn->query($sql2) or die($conn->error);
 
 								while($row2=$result2->fetch_assoc()): 
@@ -236,7 +236,7 @@ if($flag==0):
 										<div class="checkbox" >
 										   <label class="radio-inline">
 											  <input id="radio" type="radio" value="<?php echo $option_no;?>" name="<?= $q_id ?>" required/>
-											  <?php echo htmlspecialchars($option);?>               
+											  <?php echo htmlspecialchars($option_no . " - " . $option);?>               
 											</label>
 										</div>
 									</li>

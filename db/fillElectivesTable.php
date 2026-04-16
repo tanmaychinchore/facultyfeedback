@@ -51,6 +51,7 @@ crossorigin="anonymous"></script>
       $temp=$row['f_id'];
       $sql3="SELECT fname,lname from faculty where f_id='$temp'";
       $res2=$conn->query($sql3);
+      $f_name = "Not Assigned";
       while($r2=$res2->fetch_assoc()){
         $f_name=$r2['fname']." ".$r2['lname'];
       }
