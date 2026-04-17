@@ -57,6 +57,29 @@
         max-width: 100%;
         height: auto !important;
     }
+    .course-info-block {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px 20px;
+        margin-bottom: 25px;
+        margin-top: 10px;
+        line-height: 2;
+    }
+    .report-container {
+        margin-top: 10px;
+    }
+    .overall-stats {
+        background-color: #f0f4ff;
+        border: 1px solid #b3c6e7;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 30px 0 15px 0;
+        text-align: center;
+    }
+    .overall-stats p {
+        margin: 8px 0;
+    }
 </style>
 <script>
 function wrapText(context, text, x, y, maxWidth, lineHeight) {
@@ -181,9 +204,9 @@ while($res2=$r2->fetch_assoc()):
   <?php
   $s3 = "SELECT c_name from subject where course_code='$c_id' and class='$class' and acad_year='$acad_year' and sem='$sem'";
   $r3= $conn->query($s3);
+  $cname = '';
   while($res3=$r3->fetch_assoc()){
     $cname=$res3['c_name'];
-    echo "<b style='font-size: 18px;'>Course Name: </b><strong style='color:#162252;font-size: 16px;'>".$cname."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
   }
   $c = 'TH'; // default
   $code_upper = strtoupper($c_id);
@@ -194,12 +217,6 @@ while($res2=$r2->fetch_assoc()):
   } elseif ($code_upper[0] == 'T' || strpos($code_upper, 'TH') !== false) {
       $c = 'TH';
   }
-  if($class=='FY_A' || $class=='FY_B')
-    echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>"."FY"."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-  else
-    echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>".$class."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-  echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$sem."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-  echo "<b style='font-size: 18px;'>Section/ Batch: </b><strong style='color:#162252;font-size: 16px;'>".$section_or_batch."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
 
   $resp_table = ($status == 0) ? 'response_midsem' : 'response_endsem';
   $resp_sql = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$c_id' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
@@ -207,9 +224,15 @@ while($res2=$r2->fetch_assoc()):
   $resp_row = ($resp_res) ? $resp_res->fetch_assoc() : null;
   $total_responded = ($resp_row) ? $resp_row['total_resp'] : 0;
 
-  echo "<b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_responded."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
   $avg=0;
+  $global_q_counter = 1;
 ?>
+  <div class="course-info-block">
+    <b>Course Name: </b><strong style='color:#162252;'><?= htmlspecialchars($cname) ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+    <b>Class: </b><strong style='color:#162252;'><?= ($class=='FY_A' || $class=='FY_B') ? 'FY' : htmlspecialchars($class) ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+    <b>Sem: </b><strong style='color:#162252;'><?= $sem ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+    <b>Section/ Batch: </b><strong style='color:#162252;'><?= htmlspecialchars($section_or_batch) ?></strong>
+  </div>
   <div class="report-container">
     <?php
   $sem_parity = ($sem % 2 == 0) ? 2 : 1;
@@ -227,6 +250,7 @@ while($res2=$r2->fetch_assoc()):
 
   $overall_achieved_score = 0;
   $overall_max_possible_score = 0;
+  $overall_num_questions = 0;
 
   foreach ($questions_by_heading as $heading => $questions) {
       $has_numerical = false;
@@ -237,7 +261,7 @@ while($res2=$r2->fetch_assoc()):
       
       $heading_achieved_score = 0;
       $heading_max_possible_score = 0;
-      $q_counter = 1;
+      $heading_num_questions = 0;
 ?>
 <div class="report-grid">
 
@@ -302,13 +326,17 @@ while($res2=$r2->fetch_assoc()):
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
-           $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
+
+          $heading_num_questions++;
+          $overall_num_questions++;
+
+          $q_weighted_avg = ($noOfStudents > 0) ? ($q_achieved / $noOfStudents) : 0;
 ?>
       <div class="report-card">
-        <div class="question-text"><?= htmlspecialchars($question) ?></div>
+        <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($question) ?></div>
         <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="400" height="220" ></canvas> 
         <?php if($noOfStudents > 0): ?>
-            <div class="percentage-text">Percentage: <?= number_format($q_pct, 2) ?>%</div>
+            <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
         <?php endif; ?>
       </div>
       <script>
@@ -372,15 +400,15 @@ while($res2=$r2->fetch_assoc()):
         })();
       </script>
 <?php 
-          $q_counter++;
+          $global_q_counter++;
       } // Question loop
 ?>
 </div>
 
 <?php
-            $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
-      if ($heading_max_possible_score > 0) {
-          echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      $h_weighted_avg = ($heading_num_questions > 0 && $total_responded > 0) ? ($heading_achieved_score / ($heading_num_questions * $total_responded)) : 0;
+      if ($heading_num_questions > 0) {
+          echo "<p class='heading-average'><b>Weighted Average for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_weighted_avg, 2)."</span></b></p>";
       }
   } // End Numerical headings loop
 ?>
@@ -412,8 +440,15 @@ while($res2=$r2->fetch_assoc()):
   ?>
 </div>
 <?php
+    $o_weighted_avg = ($overall_num_questions > 0 && $total_responded > 0) ? ($overall_achieved_score / ($overall_num_questions * $total_responded)) : 0;
     $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
-    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p>";
+?>
+    <div class="overall-stats">
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?></strong></p>
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?></strong></p>
+    </div>
+<?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
 
     echo "</div>"; // end report-container
@@ -482,8 +517,8 @@ else if($sem==7 or $sem==8)
   $resp_row = ($resp_res) ? $resp_res->fetch_assoc() : null;
   $total_responded = ($resp_row) ? $resp_row['total_resp'] : 0;
 
-  echo "<b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_responded."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
   $avg=0;
+  $global_q_counter = 1;
 ?>
   <div class="report-container">
   <?php
@@ -502,6 +537,7 @@ else if($sem==7 or $sem==8)
 
   $overall_achieved_score = 0;
   $overall_max_possible_score = 0;
+  $overall_num_questions = 0;
 
   foreach ($questions_by_heading as $heading => $questions) {
       $has_num_e = false;
@@ -512,7 +548,7 @@ else if($sem==7 or $sem==8)
       
       $heading_achieved_score = 0;
       $heading_max_possible_score = 0;
-      $q_counter = 1;
+      $heading_num_questions = 0;
 ?>
   <div class="report-grid">
 <?php
@@ -576,13 +612,17 @@ else if($sem==7 or $sem==8)
           
           $overall_achieved_score += $q_achieved;
           $overall_max_possible_score += ($max_opt_val * $noOfStudents);
-           $q_pct = ($max_opt_val > 0 && $noOfStudents > 0) ? ($q_achieved / ($max_opt_val * $noOfStudents)) * 100 : 0;
+
+          $heading_num_questions++;
+          $overall_num_questions++;
+
+          $q_weighted_avg = ($noOfStudents > 0) ? ($q_achieved / $noOfStudents) : 0;
 ?>
       <div class="report-card">
-        <div class="question-text"><?= htmlspecialchars($question) ?></div>
+        <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($question) ?></div>
         <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="400" height="220" ></canvas> 
         <?php if($noOfStudents > 0): ?>
-            <div class="percentage-text">Percentage: <?= number_format($q_pct, 2) ?>%</div>
+            <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
         <?php endif; ?>
       </div>
       <script>
@@ -640,15 +680,15 @@ else if($sem==7 or $sem==8)
         })();
       </script>
 <?php 
-          $q_counter++;
+          $global_q_counter++;
       } // Question loop
 ?>
 </div>
 
 <?php
-            $h_pct = ($heading_max_possible_score > 0) ? ($heading_achieved_score / $heading_max_possible_score) * 100 : 0;
-      if ($heading_max_possible_score > 0) {
-          echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+      $h_weighted_avg = ($heading_num_questions > 0 && $total_responded > 0) ? ($heading_achieved_score / ($heading_num_questions * $total_responded)) : 0;
+      if ($heading_num_questions > 0) {
+          echo "<p class='heading-average'><b>Weighted Average for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_weighted_avg, 2)."</span></b></p>";
       }
   } // End Numerical headings loop
 ?>
@@ -679,8 +719,15 @@ else if($sem==7 or $sem==8)
   ?>
 </div>
 <?php
+    $o_weighted_avg = ($overall_num_questions > 0 && $total_responded > 0) ? ($overall_achieved_score / ($overall_num_questions * $total_responded)) : 0;
     $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
-    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall Percentage): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p>";
+?>
+    <div class="overall-stats">
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?></strong></p>
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?></strong></p>
+    </div>
+<?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
 
     echo "</div>"; // end report-container

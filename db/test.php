@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Faculty Feedback Report</title>
+    <title><?php
+session_start();
+include ('../config/db_config.php');
+$f_id = isset($_GET["f_id"]) ? $_GET["f_id"] : (isset($_POST["f_id"]) ? $_POST["f_id"] : null);
+$dept_id = isset($_SESSION['dept_id']) ? $_SESSION['dept_id'] : (isset($_GET['dept_id']) ? $_GET['dept_id'] : null);
+$fname = ""; $lname = "";
+if ($f_id) { $s = "SELECT fname,lname from faculty where f_id='$f_id'"; $r = $conn->query($s); if($res_f = $r->fetch_assoc()){ $fname = $res_f['fname']; $lname = $res_f['lname']; } }
+echo $fname." ".$lname;
+?> Report</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto|Varela+Round|Open+Sans">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
@@ -76,6 +84,26 @@
             max-width: 100%;
             height: auto !important;
         }
+        .course-info-block {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            margin-top: 10px;
+            line-height: 2;
+        }
+        .overall-stats {
+            background-color: #f0f4ff;
+            border: 1px solid #b3c6e7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0 15px 0;
+            text-align: center;
+        }
+        .overall-stats p {
+            margin: 8px 0;
+        }
     </style>
     <script>
     function wrapText(context, text, x, y, maxWidth, lineHeight) {
@@ -100,12 +128,6 @@
 <body>
 
 <?php
-session_start();
-include ('../config/db_config.php');
-
-$f_id = isset($_GET["f_id"]) ? $_GET["f_id"] : (isset($_POST["f_id"]) ? $_POST["f_id"] : null);
-$dept_id = isset($_SESSION['dept_id']) ? $_SESSION['dept_id'] : (isset($_GET['dept_id']) ? $_GET['dept_id'] : null);
-
 if (!$f_id || !$dept_id) {
     echo "<h3>Error: Missing Faculty ID or Department ID.</h3>";
     exit;
@@ -139,14 +161,7 @@ if($r = $res->fetch_assoc()){
     $sem_type = $r['sem_type'];
 }
 
-// Get Faculty Name
-$fname = ""; $lname = "";
-$s = "SELECT fname,lname from faculty where f_id='$f_id'";
-$r = $conn->query($s);
-if($res_f = $r->fetch_assoc()){
-    $fname = $res_f['fname'];
-    $lname = $res_f['lname'];
-}
+// Faculty name already fetched for title
 
 // Header Section
 ?>
@@ -184,16 +199,22 @@ while($res2 = $r2->fetch_assoc()):
     $r3 = $conn->query($s3);
     $cname = ($res3 = $r3->fetch_assoc()) ? $res3['c_name'] : "Unknown Course";
 
-    echo "<b style='font-size: 18px;'>Course Name: </b><strong style='color:#162252;font-size: 16px;'>".$cname."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-    echo "<b style='font-size: 18px;'>Class: </b><strong style='color:#162252;font-size: 16px;'>".(($class=='FY_A' || $class=='FY_B')?"FY":$class)."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-    echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$sem."</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-    echo "<b style='font-size: 18px;'>Section/ Batch: </b><strong style='color:#162252;font-size: 16px;'>".$section_or_batch."</strong><br>";
+
 
     $resp_table = ($status == 0) ? 'response_midsem' : 'response_endsem';
     $resp_sql = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$c_id' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
     $resp_res = $conn->query($resp_sql);
     $total_responded = ($row = $resp_res->fetch_assoc()) ? $row['total_resp'] : 0;
-    echo "<br><b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_responded."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
+
+    $global_q_counter = 1;
+?>
+    <div class="course-info-block">
+        <b>Course Name: </b><strong style='color:#162252;'><?= htmlspecialchars($cname) ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+        <b>Class: </b><strong style='color:#162252;'><?= (($class=='FY_A' || $class=='FY_B')?"FY":$class) ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+        <b>Sem: </b><strong style='color:#162252;'><?= $sem ?></strong>&nbsp;&nbsp;&nbsp;&nbsp;
+        <b>Section/ Batch: </b><strong style='color:#162252;'><?= $section_or_batch ?></strong>
+    </div>
+<?php
 
     $c_type = 'TH'; // default
     $code_upper = strtoupper($c_id);
@@ -211,7 +232,7 @@ while($res2 = $r2->fetch_assoc()):
     $questions_by_heading = [];
     while($row = $res_q->fetch_assoc()) $questions_by_heading[$row['heading']][] = $row;
 
-    $overall_achieved = 0; $overall_max = 0;
+    $overall_achieved = 0; $overall_max = 0; $overall_num_questions = 0;
 
     foreach ($questions_by_heading as $heading => $questions) {
         $has_numerical = false;
@@ -220,7 +241,7 @@ while($res2 = $r2->fetch_assoc()):
 
         echo "<div class='heading-group'>";
         echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px;'>" . htmlspecialchars($heading) . "</h4>";
-        $h_achieved = 0; $h_max = 0;
+        $h_achieved = 0; $h_max = 0; $h_num_questions = 0;
         echo '<div class="report-grid">';
         foreach ($questions as $q) {
             $q_id = $q['q_id'];
@@ -249,13 +270,14 @@ while($res2 = $r2->fetch_assoc()):
             for($k=0; $k<count($counts); $k++) $q_ach += $vals[$k] * $counts[$k];
             $h_achieved += $q_ach; $h_max += ($max_v * $q_stu_count);
             $overall_achieved += $q_ach; $overall_max += ($max_v * $q_stu_count);
-            $q_pct = ($max_v > 0 && $q_stu_count > 0) ? ($q_ach / ($max_v * $q_stu_count)) * 100 : 0;
+            $h_num_questions++; $overall_num_questions++;
+            $q_weighted_avg = ($q_stu_count > 0) ? ($q_ach / $q_stu_count) : 0;
             ?>
             <div class="report-card">
-                <div class="question-text"><?= htmlspecialchars($q_text) ?></div>
+                <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($q_text) ?></div>
                 <canvas id='c_<?= $c_id.$q_id ?>' width="400" height="220"></canvas>
                 <?php if($q_stu_count > 0): ?>
-                    <div class="percentage-text">Percentage: <?= number_format($q_pct, 2) ?>%</div>
+                    <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
                 <?php endif; ?>
             </div>
             <script>
@@ -293,11 +315,12 @@ while($res2 = $r2->fetch_assoc()):
             })();
             </script>
             <?php
+        $global_q_counter++;
         }
         echo '</div>';
-        if ($h_max > 0) {
-            $h_pct = ($h_achieved / $h_max) * 100;
-            echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_pct, 2)."%</span></b></p>";
+        if ($h_num_questions > 0 && $total_responded > 0) {
+            $h_weighted_avg = ($h_achieved / ($h_num_questions * $total_responded));
+            echo "<p class='heading-average'><b>Weighted Average for ".htmlspecialchars($heading).": <span style='color:#162252;'>".number_format($h_weighted_avg, 2)."</span></b></p>";
         }
         echo "</div>"; // Close heading-section
     } // End numerical heading loop
@@ -325,10 +348,16 @@ while($res2 = $r2->fetch_assoc()):
         }
     }
 
-    // 3. Overall Percentage
+    // 3. Overall Weighted Average & Percentage
+    $o_weighted_avg = ($overall_num_questions > 0 && $total_responded > 0) ? ($overall_achieved / ($overall_num_questions * $total_responded)) : 0;
     $o_pct = ($overall_max > 0) ? ($overall_achieved / $overall_max) * 100 : 0;
-    echo "<br><p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall): </b><strong style='color:#162252; font-size: 20px;'>".number_format($o_pct, 2)."%</strong></p>";
-    
+?>
+    <div class="overall-stats">
+        <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?></strong></p>
+        <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
+        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?></strong></p>
+    </div>
+<?php
     // 4. Footer
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
     
@@ -345,13 +374,18 @@ while($re = $r_el->fetch_assoc()):
     $rnos = []; while($sr = $b_el->fetch_assoc()) $rnos[] = $sr['roll_no'];
     $r_list = count($rnos) > 0 ? implode(',', $rnos) : "'0'";
 
-    echo "<b style='font-size: 18px;'>Course Name: </b><strong style='color:#162252;font-size: 16px;'>".$ename." (Elective/IDC)</strong>&nbsp;&nbsp;&nbsp;&nbsp;";
-    echo "<b style='font-size: 18px;'>Sem: </b><strong style='color:#162252;font-size: 16px;'>".$esem."</strong><br>";
-    
+
     $resp_sql_el = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$eid' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($r_list)";
     $resp_res_el = $conn->query($resp_sql_el);
     $total_resp_el = ($row_el = $resp_res_el->fetch_assoc()) ? $row_el['total_resp'] : 0;
-    echo "<br><b style='font-size: 18px;'>Total Students Responded: </b><strong style='color:#162252;font-size: 16px;'>".$total_resp_el."</strong><br><hr>&nbsp;&nbsp;&nbsp;&nbsp;";
+
+    $global_q_counter_e = 1;
+?>
+    <div class="course-info-block">
+        <b>Course Name: </b><strong style='color:#162252;'><?= htmlspecialchars($ename) ?> (Elective/IDC)</strong>&nbsp;&nbsp;&nbsp;&nbsp;
+        <b>Sem: </b><strong style='color:#162252;'><?= $esem ?></strong>
+    </div>
+<?php
 
     $e_type = 'TH';
     $e_upper = strtoupper($eid);
@@ -366,7 +400,7 @@ while($re = $r_el->fetch_assoc()):
     $res_qe = $conn->query($sql_qe);
     $q_be = []; while($rqe = $res_qe->fetch_assoc()) $q_be[$rqe['heading']][] = $rqe;
 
-    $o_ach_e = 0; $o_max_e = 0;
+    $o_ach_e = 0; $o_max_e = 0; $o_num_questions_e = 0;
     foreach ($q_be as $h_e => $ques_e) {
         $has_num_e = false;
         foreach($ques_e as $qe) { if(!$qe['is_text_input']) { $has_num_e = true; break; } }
@@ -374,7 +408,7 @@ while($re = $r_el->fetch_assoc()):
 
         echo "<div class='heading-group'>";
         echo "<h4 style='color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 5px;'>" . htmlspecialchars($h_e) . "</h4>";
-        $he_ach = 0; $he_max = 0;
+        $he_ach = 0; $he_max = 0; $he_num_questions = 0;
         echo '<div class="report-grid">';
         foreach ($ques_e as $qe) {
             $qid_e = $qe['q_id']; $qtx_e = $qe['question'];
@@ -399,13 +433,14 @@ while($re = $r_el->fetch_assoc()):
             $qae = 0; for($ke=0; $ke<count($cse); $ke++) $qae += $vse[$ke] * $cse[$ke];
             $he_ach += $qae; $he_max += ($max_ve * $q_stu_e);
             $o_ach_e += $qae; $o_max_e += ($max_ve * $q_stu_e);
-            $qpe = ($max_ve > 0 && $q_stu_e > 0) ? ($qae / ($max_ve * $q_stu_e)) * 100 : 0;
+            $he_num_questions++; $o_num_questions_e++;
+            $q_weighted_avg_e = ($q_stu_e > 0) ? ($qae / $q_stu_e) : 0;
             ?>
             <div class="report-card">
-                <div class="question-text"><?= htmlspecialchars($qtx_e) ?></div>
+                <div class="question-text"><?= $global_q_counter_e . ". " . htmlspecialchars($qtx_e) ?></div>
                 <canvas id='e_<?= $eid.$qid_e ?>' width="400" height="220"></canvas>
                 <?php if($q_stu_e > 0): ?>
-                    <div class="percentage-text">Percentage: <?= number_format($qpe, 2) ?>%</div>
+                    <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg_e, 2) ?></div>
                 <?php endif; ?>
             </div>
             <script>
@@ -433,11 +468,12 @@ while($re = $r_el->fetch_assoc()):
             })();
             </script>
             <?php
+        $global_q_counter_e++;
         }
         echo '</div>';
-        if($he_max > 0) {
-            $he_pct = ($he_ach / $he_max) * 100;
-            echo "<p class='heading-average'><b>Average percentage for ".htmlspecialchars($h_e).": <span style='color:#162252;'>".number_format($he_pct, 2)."%</span></b></p>";
+        if($he_num_questions > 0 && $total_resp_el > 0) {
+            $he_weighted_avg = ($he_ach / ($he_num_questions * $total_resp_el));
+            echo "<p class='heading-average'><b>Weighted Average for ".htmlspecialchars($h_e).": <span style='color:#162252;'>".number_format($he_weighted_avg, 2)."</span></b></p>";
         }
         echo "</div>"; // Close heading-section
     } // End Numerical loop
@@ -464,10 +500,16 @@ while($re = $r_el->fetch_assoc()):
         }
     }
 
-    // 3. Overall Percentage
+    // 3. Overall Weighted Average & Percentage
+    $oe_weighted_avg = ($o_num_questions_e > 0 && $total_resp_el > 0) ? ($o_ach_e / ($o_num_questions_e * $total_resp_el)) : 0;
     $oe_pct = ($o_max_e > 0) ? ($o_ach_e / $o_max_e) * 100 : 0;
-    echo "<p style='text-align:center;'><b style='font-size: 18px;'>Faculty Evaluation (Overall): </b><strong style='color:#162252; font-size: 20px;'>".number_format($oe_pct, 2)."%</strong></p>";
-    
+?>
+    <div class="overall-stats">
+        <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($oe_weighted_avg, 2) ?></strong></p>
+        <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($oe_pct, 2) ?>%</strong></p>
+        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_resp_el ?></strong></p>
+    </div>
+<?php
     // 4. Footer
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
     echo "<div class='page-break'></div><hr><br>";
