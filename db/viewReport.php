@@ -8,6 +8,8 @@
     
 	</script>
 <style>
+    body { font-family: 'Open Sans', 'Roboto', sans-serif; color: #333; line-height: 1.6; }
+    .report-header { text-align: center; margin-bottom: 30px; border-bottom: 3px double #162252; padding-bottom: 10px; }
     .report-grid {
         display: flex;
         flex-wrap: wrap;
@@ -15,7 +17,7 @@
         width: 100%;
     }
     .report-card {
-        flex: 0 1 calc(50% - 10px); /* Don't grow to fill line, keep to half side */
+        flex: 0 1 calc(50% - 10px);
         max-width: calc(50% - 10px);
         min-width: 300px;
         border: 0.5px solid #162252;
@@ -25,60 +27,90 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        align-items: center; /* Center content like graphs and percentages */
+        align-items: center;
     }
     @media (max-width: 768px) {
         .report-card {
             flex: 1 1 100%;
+            max-width: 100%;
         }
     }
     .question-text {
-        font-weight: bold;
+        font-weight: 600;
         text-align: left;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         color: #162252;
-        width: 100%; /* Ensure question stays left-aligned across full width */
-        align-self: flex-start;
+        width: 100%;
+        font-size: 14px;
+        min-height: 40px;
     }
     .percentage-text {
         margin-top: 15px;
-        color: #162252;
+        color: #d9534f;
         font-weight: bold;
         text-align: center;
         width: 100%;
+        font-size: 15px;
     }
     .heading-average {
         margin-top: 30px;
         margin-bottom: 30px;
         text-align: center;
         width: 100%;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #eee;
+    }
+    h4 {
+        color: #162252;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-left: 5px solid #162252;
+        padding-left: 10px;
+        margin-top: 40px !important;
+        page-break-after: avoid;
     }
     canvas {
-        max-width: 100%;
+        width: 100% !important;
+        max-width: 400px;
         height: auto !important;
     }
     .course-info-block {
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
+        background-color: #fcfcfc;
+        border: 1px solid #162252;
+        border-left: 10px solid #162252;
+        border-radius: 0;
         padding: 15px 20px;
         margin-bottom: 25px;
         margin-top: 10px;
-        line-height: 2;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
     .report-container {
         margin-top: 10px;
     }
     .overall-stats {
-        background-color: #f0f4ff;
-        border: 1px solid #b3c6e7;
-        border-radius: 8px;
-        padding: 20px;
-        margin: 30px 0 15px 0;
+        background-color: #fff;
+        border: 2px solid #162252;
+        border-radius: 0;
+        padding: 25px;
+        margin: 40px 0;
         text-align: center;
+        position: relative;
+    }
+    .overall-stats::before {
+        content: "SUMMARY STATISTICS";
+        position: absolute;
+        top: -12px;
+        left: 20px;
+        background: white;
+        padding: 0 10px;
+        font-weight: bold;
+        color: #162252;
+        font-size: 14px;
     }
     .overall-stats p {
-        margin: 8px 0;
+        margin: 10px 0;
     }
 </style>
 <script>
@@ -137,11 +169,12 @@ while($r=$res->fetch_assoc()){
     $dept_name = "RAI";
 }?>
 
-<p style="text-align: center; color: black; text-align: center; font-size: 24px;  "><strong>K.J. SOMAIYA SCHOOL OF ENGINEERING, MUMBAI</strong></p>
-<p style="text-align: center; color: black; text-align: center; font-size: 18px; "><strong>(A Constituent College of Somaiya Vidyavihar University)</strong></p>
-<hr>
-<p style="text-align: center; color: black; text-align: center; font-size: 18px; "><strong>Department of <?php echo $dept_name; ?></strong></p>
-<hr>
+<div class="report-header" style="text-align: center; margin-bottom: 30px; border-bottom: 3px double #162252; padding-bottom: 10px;">
+    <h2 style="margin:0; color: #162252; font-weight: 800; text-align:center;">K.J. SOMAIYA SCHOOL OF ENGINEERING, MUMBAI</h2>
+    <p style="margin:5px 0; font-style: italic; text-align:center;">(A Constituent College of Somaiya Vidyavihar University)</p>
+    <h4 style="margin:15px 0; border:none; padding:0; text-align:center; color: #162252; border-left:none;">Department of <?= htmlspecialchars($dept_name) ?></h4>
+</div>
+
 <?php
 $f_id; $cname; $c_id; $fname; $lname;                
 $f_id=$_POST["f_id"];
@@ -155,31 +188,28 @@ while($r=$res->fetch_assoc()){
   $sem_type=$r['sem_type'];
 }
 
-
-
-echo '<p style="text-align: center; font-size: 24px;"><strong>FACULTY FEEDBACK REPORT ('.$acad_year.')</strong></p>';
-if($sem_type=="Odd"){
-  if($status==0)
-    echo '<p style="text-align: center; font-size: 20px;"><strong>Odd Semester (Mid Term) </strong></p>';
-  else
-    echo '<p style="text-align: center; font-size: 18px;"><strong>Odd Semester (End Term) </strong></p>';
-}else{
-  if($status==0)
-    echo '<p style="text-align: center; font-size: 20px;"><strong>Even Semester (Mid Term) </strong></p>';
-  else
-    echo '<p style="text-align: center; font-size: 18px;"><strong>Even Semester (End Term) </strong></p>';
-}
-echo "<hr>";
-
 $s = "SELECT fname,lname from faculty where f_id='$f_id'";
 $r= $conn->query($s);
 while($res=$r->fetch_assoc()){
   $fname=$res['fname'];
   $lname=$res['lname'];
-  echo "<b style='font-size: 18px;'>Faculty Name: </b><strong style='color:#162252; font-size: 16px; '>".$fname." ".$lname."</strong><br><hr><br>";
-
 }
+?>
 
+<div class="faculty-info" style="margin-bottom: 20px;">
+    <table class="table table-bordered" style="width: 100%;">
+        <tr>
+            <th style="width: 20%; background: #f4f4f4; text-align:left; color: #333;">Faculty Name</th>
+            <td><strong style="color: #162252; font-size: 18px;"><?= $fname." ".$lname ?></strong></td>
+            <th style="width: 20%; background: #f4f4f4; text-align:left; color: #333;">Academic Year</th>
+            <td><strong style="color: #162252; font-size: 16px;"><?= $acad_year ?></strong></td>
+        </tr>
+    </table>
+</div>
+
+<h3 style="text-align: center; text-decoration: underline; margin-bottom: 30px; font-weight:bold; color: #162252;">FACULTY FEEDBACK REPORT</h3>
+
+<?php
 if($sem_type=='Odd')
   $s2 = "SELECT course_code,class,sem,section_or_batch from courses_faculty where f_id='$f_id' and sem in (1,3,5,7) and acad_year='$acad_year' and dept_id='$dept_id'";
 else
@@ -199,6 +229,7 @@ while($res2=$r2->fetch_assoc()):
     $roll_no[]=$s["roll_no"];
   }
   $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
+  $total_enrolled = count($roll_no);
   ?>
 
   <?php
@@ -335,9 +366,7 @@ while($res2=$r2->fetch_assoc()):
       <div class="report-card">
         <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($question) ?></div>
         <canvas id='<?php echo $c.$cname. $section_or_batch.$q_id ?>' width="400" height="220" ></canvas> 
-        <?php if($noOfStudents > 0): ?>
-            <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
-        <?php endif; ?>
+        <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
       </div>
       <script>
         (function() {
@@ -444,9 +473,9 @@ while($res2=$r2->fetch_assoc()):
     $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
 ?>
     <div class="overall-stats">
-      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?></strong></p>
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?> out of 5</strong></p>
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
-      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?></strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_enrolled ?></strong></p>
     </div>
 <?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
@@ -477,6 +506,7 @@ while($res2=$r2->fetch_assoc()):
     $roll_no[]=$s["roll_no"];
   }
   $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
+  $total_enrolled_el = count($roll_no);
   ?>
 
   <?php
@@ -621,9 +651,7 @@ else if($sem==7 or $sem==8)
       <div class="report-card">
         <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($question) ?></div>
         <canvas id='<?php echo $electiveName.$electiveID.$q_id ?>' width="400" height="220" ></canvas> 
-        <?php if($noOfStudents > 0): ?>
-            <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
-        <?php endif; ?>
+        <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
       </div>
       <script>
         (function() {
@@ -723,16 +751,22 @@ else if($sem==7 or $sem==8)
     $o_pct = ($overall_max_possible_score > 0) ? ($overall_achieved_score / $overall_max_possible_score) * 100 : 0;
 ?>
     <div class="overall-stats">
-      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?></strong></p>
+      <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?> out of 5</strong></p>
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
-      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?></strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_enrolled_el ?></strong></p>
     </div>
 <?php
-    echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
+    echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>System Generated Report Segment</footer><hr></div>';
 
     echo "</div>"; // end report-container
     echo "<hr><br>";
 endwhile;
 ?>
+
+
+
+<div style="text-align: center; margin-top: 60px; color: #777; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
+    <footer>This is a System Generated Report - Generated on <?= date('d-M-Y H:i') ?></footer>
+</div>
 
 
