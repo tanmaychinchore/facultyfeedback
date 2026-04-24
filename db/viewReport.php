@@ -227,7 +227,7 @@ while($res2=$r2->fetch_assoc()):
   $class=$res2["class"];
   $sem=$res2["sem"];
   $section_or_batch=$res2["section_or_batch"];
-  $a="SELECT roll_no from student where class='$class' and sem='$sem' and (batch='$section_or_batch' or section='$section_or_batch')  and acad_year='$acad_year'";
+  $a="SELECT roll_no from student where class='$class' and sem='$sem' and (batch='$section_or_batch' or section='$section_or_batch') and dept_id='$dept_id' and acad_year='$acad_year'";
   $b=$conn->query($a);
 
   $roll_no=array();
@@ -235,7 +235,7 @@ while($res2=$r2->fetch_assoc()):
     $roll_no[]=$s["roll_no"];
   }
   $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
-  $total_enrolled = count($roll_no);
+  $total_calculated_students = count($roll_no);
   ?>
 
   <?php
@@ -481,7 +481,7 @@ while($res2=$r2->fetch_assoc()):
     <div class="overall-stats">
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?> out of 5</strong></p>
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
-      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_enrolled ?></strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_calculated_students ?></strong></p>
     </div>
 <?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
@@ -504,7 +504,7 @@ while($res2=$r2->fetch_assoc()):
 
   $sem=$res2["sem"];
   $electiveName=$res2["electiveName"];
-  $a="SELECT roll_no from student where sem='$sem' and (elective_or_IDC_ID='$electiveID' or elective_or_IDC_BatchID='$electiveID' or elective_or_IDC_ID1='$electiveID' or elective_or_IDC_ID2='$electiveID' or elective_or_IDC_ID3='$electiveID' or elective_or_IDC_ID4='$electiveID' or elective_or_IDC_ID5='$electiveID' or elective_or_IDC_BatchID1='$electiveID'or elective_or_IDC_BatchID2='$electiveID' or elective_or_IDC_BatchID3='$electiveID' or elective_or_IDC_BatchID4='$electiveID' or elective_or_IDC_BatchID5='$electiveID' )  and acad_year='$acad_year'";
+  $a="SELECT roll_no from student where sem='$sem' and dept_id='$dept_id' and (elective_or_IDC_ID='$electiveID' or elective_or_IDC_BatchID='$electiveID' or elective_or_IDC_ID1='$electiveID' or elective_or_IDC_ID2='$electiveID' or elective_or_IDC_ID3='$electiveID' or elective_or_IDC_ID4='$electiveID' or elective_or_IDC_ID5='$electiveID' or elective_or_IDC_BatchID1='$electiveID'or elective_or_IDC_BatchID2='$electiveID' or elective_or_IDC_BatchID3='$electiveID' or elective_or_IDC_BatchID4='$electiveID' or elective_or_IDC_BatchID5='$electiveID' )  and acad_year='$acad_year'";
   $b=$conn->query($a);
 
   $roll_no=array();
@@ -512,7 +512,7 @@ while($res2=$r2->fetch_assoc()):
     $roll_no[]=$s["roll_no"];
   }
   $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
-  $total_enrolled_el = count($roll_no);
+  $total_calculated_students_el = count($roll_no);
   ?>
 
   <?php
@@ -759,7 +759,7 @@ else if($sem==7 or $sem==8)
     <div class="overall-stats">
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?> out of 5</strong></p>
       <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
-      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_enrolled_el ?></strong></p>
+      <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_calculated_students_el ?></strong></p>
     </div>
 <?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>System Generated Report Segment</footer><hr></div>';

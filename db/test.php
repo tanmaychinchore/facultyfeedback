@@ -254,12 +254,12 @@ while($res2 = $r2->fetch_assoc()):
     $sem = $res2["sem"];
     $section_or_batch = $res2["section_or_batch"];
 
-    $a = "SELECT roll_no from student where class='$class' and sem='$sem' and (batch='$section_or_batch' or section='$section_or_batch') and acad_year='$acad_year'";
+    $a = "SELECT roll_no from student where class='$class' and sem='$sem' and (batch='$section_or_batch' or section='$section_or_batch') and dept_id='$dept_id' and acad_year='$acad_year'";
     $b = $conn->query($a);
     $roll_no = [];
     while($s = $b->fetch_assoc()) $roll_no[] = $s["roll_no"];
     $roll_no_list = count($roll_no) > 0 ? implode(',', $roll_no) : "'0'";
-    $total_enrolled = count($roll_no);
+    $total_calculated_students = count($roll_no);
 
     $s3 = "SELECT c_name from subject where course_code='$c_id' and class='$class' and acad_year='$acad_year' and sem='$sem'";
     $r3 = $conn->query($s3);
@@ -419,7 +419,7 @@ while($res2 = $r2->fetch_assoc()):
     <div class="overall-stats">
         <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_weighted_avg, 2) ?> out of 5</strong></p>
         <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($o_pct, 2) ?>%</strong></p>
-        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_enrolled ?></strong></p>
+        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_responded ?> out of <?= $total_calculated_students ?></strong></p>
     </div>
 <?php
     echo '<div style="text-align: center; margin-top: 10px;"><hr><footer>************ This is a System Generated Report ************</footer><hr></div>';
@@ -431,11 +431,11 @@ $s_el = "SELECT electiveID, electiveName, sem from electives where f_id='$f_id' 
 $r_el = $conn->query($s_el);
 while($re = $r_el->fetch_assoc()):
     $eid = $re['electiveID']; $ename = $re['electiveName']; $esem = $re['sem'];
-    $a_el = "SELECT roll_no from student where sem='$esem' and (elective_or_IDC_ID='$eid' or elective_or_IDC_BatchID='$eid' or elective_or_IDC_ID1='$eid' or elective_or_IDC_ID2='$eid' or elective_or_IDC_ID3='$eid' or elective_or_IDC_ID4='$eid' or elective_or_IDC_ID5='$eid' or elective_or_IDC_BatchID1='$eid' or elective_or_IDC_BatchID2='$eid' or elective_or_IDC_BatchID3='$eid' or elective_or_IDC_BatchID4='$eid' or elective_or_IDC_BatchID5='$eid') and acad_year='$acad_year'";
+    $a_el = "SELECT roll_no from student where sem='$esem' and dept_id='$dept_id' and (elective_or_IDC_ID='$eid' or elective_or_IDC_BatchID='$eid' or elective_or_IDC_ID1='$eid' or elective_or_IDC_ID2='$eid' or elective_or_IDC_ID3='$eid' or elective_or_IDC_ID4='$eid' or elective_or_IDC_ID5='$eid' or elective_or_IDC_BatchID1='$eid' or elective_or_IDC_BatchID2='$eid' or elective_or_IDC_BatchID3='$eid' or elective_or_IDC_BatchID4='$eid' or elective_or_IDC_BatchID5='$eid') and acad_year='$acad_year'";
     $b_el = $conn->query($a_el);
     $rnos = []; while($sr = $b_el->fetch_assoc()) $rnos[] = $sr['roll_no'];
     $r_list = count($rnos) > 0 ? implode(',', $rnos) : "'0'";
-    $total_enrolled_el = count($rnos);
+    $total_calculated_students_el = count($rnos);
 
 
     $resp_sql_el = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$eid' AND f_id='$f_id' AND acad_year='$acad_year' AND sem_type='$sem_type' AND roll_no IN ($r_list)";
@@ -568,7 +568,7 @@ while($re = $r_el->fetch_assoc()):
     <div class="overall-stats">
         <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Average): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($oe_weighted_avg, 2) ?> out of 5</strong></p>
         <p><b style='font-size: 18px;'>Faculty Evaluation (Overall Weighted Percentage): </b><strong style='color:#162252; font-size: 20px;'><?= number_format($oe_pct, 2) ?>%</strong></p>
-        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_resp_el ?> out of <?= $total_enrolled_el ?></strong></p>
+        <p style='margin-top: 15px;'><b style='font-size: 16px;'>Number of Students Submitted Feedback = </b><strong style='color:#162252; font-size: 16px;'><?= $total_resp_el ?> out of <?= $total_calculated_students_el ?></strong></p>
     </div>
 <?php
 endwhile;
