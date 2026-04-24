@@ -171,7 +171,7 @@ while($r=$res->fetch_assoc()){
 
 <div class="report-header" style="text-align: center; margin-bottom: 30px; border-bottom: 3px double #162252; padding-bottom: 10px;">
     <h2 style="margin:0; color: #162252; font-weight: 800; text-align:center;">K.J. SOMAIYA SCHOOL OF ENGINEERING, MUMBAI</h2>
-    <p style="margin:5px 0; font-style: italic; text-align:center;">(A Constituent College of Somaiya Vidyavihar University)</p>
+    <!-- <p style="margin:5px 0; font-style: italic; text-align:center;">(A Constituent College of Somaiya Vidyavihar University)</p> -->
     <h4 style="margin:15px 0; border:none; padding:0; text-align:center; color: #162252; border-left:none;">Department of <?= htmlspecialchars($dept_name) ?></h4>
 </div>
 
@@ -197,14 +197,20 @@ while($res=$r->fetch_assoc()){
 ?>
 
 <div class="faculty-info" style="margin-bottom: 20px;">
-    <table class="table table-bordered" style="width: 100%;">
-        <tr>
-            <th style="width: 20%; background: #f4f4f4; text-align:left; color: #333;">Faculty Name</th>
-            <td><strong style="color: #162252; font-size: 18px;"><?= $fname." ".$lname ?></strong></td>
-            <th style="width: 20%; background: #f4f4f4; text-align:left; color: #333;">Academic Year</th>
-            <td><strong style="color: #162252; font-size: 16px;"><?= $acad_year ?></strong></td>
-        </tr>
-    </table>
+    <div style="display: flex; justify-content: space-between; gap: 20px;">
+        <table class="table table-bordered" style="width: 48%; margin-bottom: 0;">
+            <tr>
+                <th style="width: 40%; background: #f4f4f4; text-align:left; color: #333;">Faculty Name</th>
+                <td><strong style="color: #162252; font-size: 14px;"><?= $fname." ".$lname ?></strong></td>
+            </tr>
+        </table>
+        <table class="table table-bordered" style="width: 48%; margin-bottom: 0;">
+            <tr>
+                <th style="width: 40%; background: #f4f4f4; text-align:left; color: #333;">Academic Year</th>
+                <td><strong style="color: #162252; font-size: 14px;"><?= $acad_year ?></strong></td>
+            </tr>
+        </table>
+    </div>
 </div>
 
 <h3 style="text-align: center; text-decoration: underline; margin-bottom: 30px; font-weight:bold; color: #162252;">FACULTY FEEDBACK REPORT</h3>
