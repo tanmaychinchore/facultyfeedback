@@ -11,8 +11,76 @@ include ('../config/db_config.php');
 $year=$_POST['year'];
 $sem=$_POST['sem'];
 
+function getWeightedAverage($conn, $f_id, $course_code, $class, $section_or_batch, $sem, $year, $dept_id, $sem_type_flag, $is_elective = false) {
+    $sem_type = ($sem % 2 == 1) ? 'Odd' : 'Even';
+    $resp_table = ($sem_type_flag == 'mid') ? 'response_midsem' : 'response_endsem';
 
-?>
+    $c = 'TH';
+    $code_upper = strtoupper($course_code);
+    if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+        $c = 'LAB';
+    } elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false || ($code_upper[0] == 'T' && strlen($code_upper) > 1 && $code_upper[1] != 'H')) {
+        $c = 'TU';
+    } else {
+        $c = 'TH';
+    }
+
+    if ($is_elective) {
+        $roll_no_list_q = "SELECT roll_no FROM student WHERE sem='$sem' AND dept_id='$dept_id' AND (elective_or_IDC_ID='$course_code' OR elective_or_IDC_BatchID='$course_code' OR elective_or_IDC_ID1='$course_code' OR elective_or_IDC_ID2='$course_code' OR elective_or_IDC_ID3='$course_code' OR elective_or_IDC_ID4='$course_code' OR elective_or_IDC_ID5='$course_code' OR elective_or_IDC_BatchID1='$course_code' OR elective_or_IDC_BatchID2='$course_code' OR elective_or_IDC_BatchID3='$course_code' OR elective_or_IDC_BatchID4='$course_code' OR elective_or_IDC_BatchID5='$course_code') AND acad_year='$year'";
+    } else {
+        $roll_no_list_q = "SELECT roll_no FROM student WHERE class='$class' AND sem='$sem' AND (batch='$section_or_batch' OR section='$section_or_batch') AND dept_id='$dept_id' AND acad_year='$year'";
+    }
+
+    $b = $conn->query($roll_no_list_q);
+    $roll_no = [];
+    if($b) {
+        while($s_row = $b->fetch_assoc()) { $roll_no[] = $s_row['roll_no']; }
+    }
+    if(count($roll_no) == 0) return -1;
+    $roll_no_list = "'" . implode("','", $roll_no) . "'";
+
+    $resp_sql = "SELECT count(DISTINCT roll_no) as total_resp FROM $resp_table WHERE course_code='$course_code' AND f_id='$f_id' AND acad_year='$year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+    $resp_res = $conn->query($resp_sql);
+    $total_responded = ($resp_res && $row = $resp_res->fetch_assoc()) ? (int)$row['total_resp'] : 0;
+    if($total_responded == 0) return -1;
+
+    $sem_parity = ($sem % 2 == 0) ? 2 : 1;
+    $sql_q = "SELECT q.id as q_id, q.is_text_input FROM question_set qs JOIN question_heading h ON qs.id = h.question_set_id JOIN feedback_question q ON h.id = q.heading_id WHERE qs.code = '$c' AND qs.acad_year = '$year' AND qs.semester = '$sem_parity'";
+    $res_q = $conn->query($sql_q);
+    
+    $overall_achieved = 0;
+    $overall_num_questions = 0;
+
+    if($res_q) {
+        while($q = $res_q->fetch_assoc()) {
+            if($q['is_text_input']) continue;
+            $q_id = $q['q_id'];
+
+            $s_opt = "SELECT option_number FROM feedback_option WHERE question_id='$q_id'";
+            $res_opt = $conn->query($s_opt);
+            $vals = [];
+            while($ro = $res_opt->fetch_assoc()) { $vals[] = (int)$ro['option_number']; }
+            if(empty($vals)) continue;
+
+            $csql = "SELECT response FROM $resp_table WHERE q_id='$q_id' AND course_code='$course_code' AND f_id='$f_id' AND acad_year='$year' AND sem_type='$sem_type' AND roll_no IN ($roll_no_list)";
+            $rres = $conn->query($csql);
+            if($rres) {
+                while($rr = $rres->fetch_assoc()) {
+                    $val = (int)$rr['response'];
+                    if(in_array($val, $vals)) {
+                        $overall_achieved += $val;
+                    }
+                }
+            }
+            $overall_num_questions++;
+        }
+    }
+
+    if($overall_num_questions > 0 && $total_responded > 0) {
+        return $overall_achieved / ($overall_num_questions * $total_responded);
+    }
+    return -1;
+}?>
 <div style="margin: 20px;">
 <button id="button_print"  class="btn btn-success" onclick="printDataSummary()" align="center">Print</button>
 <script>
@@ -77,103 +145,58 @@ while($row1=$res1->fetch_assoc()){
 	$c_name=$row1['c_name'];
   $course_code=$row1['course_code'];
 
-  	if($course_code[0]=='L'){
-    $c=$course_code[0];
-    $ct = 'Lab';
-  }
-  elseif ($course_code[0]=='T'){
-    $c='TH';
-    if($course_code[1]=='H'){
-      $ct = 'Theory';
-    }else{
-      $ct = 'Tutorial';
+  	$c = 'TH';
+    $ct = 'Theory';
+    $code_upper = strtoupper($course_code);
+    if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+        $c = 'LAB';
+        $ct = 'Lab';
+    } elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false || ($code_upper[0] == 'T' && strlen($code_upper) > 1 && $code_upper[1] != 'H')) {
+        $c = 'TU';
+        $ct = 'Tutorial';
+    } else {
+        $c = 'TH';
+        $ct = 'Theory';
+    } 
+
+    $s_batches = "SELECT DISTINCT section_or_batch, class FROM courses_faculty WHERE course_code='$course_code' AND acad_year='$year' AND sem='$sem' AND dept_id='$dept_id'";
+    $res_batches = $conn->query($s_batches);
+    $batch_mid_avgs = [];
+    $batch_end_avgs = [];
+
+    if($res_batches) {
+        while($batch = $res_batches->fetch_assoc()) {
+            $section_or_batch = $batch['section_or_batch'];
+            $class = $batch['class'];
+
+            $s_fac = "SELECT f_id FROM courses_faculty WHERE course_code='$course_code' AND section_or_batch='$section_or_batch' AND class='$class' AND acad_year='$year' AND sem='$sem' AND dept_id='$dept_id'";
+            $res_fac = $conn->query($s_fac);
+            
+            $fac_mid_avgs = [];
+            $fac_end_avgs = [];
+
+            if($res_fac) {
+                while($fac = $res_fac->fetch_assoc()) {
+                    $f_id = $fac['f_id'];
+                    $mid_avg = getWeightedAverage($conn, $f_id, $course_code, $class, $section_or_batch, $sem, $year, $dept_id, 'mid', false);
+                    if($mid_avg >= 0) $fac_mid_avgs[] = $mid_avg;
+                    
+                    $end_avg = getWeightedAverage($conn, $f_id, $course_code, $class, $section_or_batch, $sem, $year, $dept_id, 'end', false);
+                    if($end_avg >= 0) $fac_end_avgs[] = $end_avg;
+                }
+            }
+
+            if(count($fac_mid_avgs) > 0) {
+                $batch_mid_avgs[] = array_sum($fac_mid_avgs) / count($fac_mid_avgs);
+            }
+            if(count($fac_end_avgs) > 0) {
+                $batch_end_avgs[] = array_sum($fac_end_avgs) / count($fac_end_avgs);
+            }
+        }
     }
-  } 
 
-  	// calculating score
-  $pre = 2;
-  $avg_mid=0;
-  $avg_end=0;
-  $avg=0;
-
-    $sql = "SELECT q_id, question FROM question where course_type='$c' and acad_year='$year'";
-    $result = $conn->query($sql);   
-    $noOfQues=$result->num_rows;
-    while($row=$result->fetch_assoc()):
-      $q_id=$row['q_id'];
-      $question=$row["question"];
-
-      $s2 = "SELECT `option` FROM options where course_type='$c' and acad_year='$year' and q_id='$q_id'";
-        $re2 = $conn->query($s2);   
-        $noOfOptions=$re2->num_rows;
-        $options=array();
-        $options2=array();
-        $optionName=array();
-        while($r2=$re2->fetch_assoc()){
-          $options[]=0;
-          $options2[]=0;
-          $optionName[]=$r2["option"];
-        }
-
-        if($sem=='Both'){
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-        }else{
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";}
-          $n = $conn->query($m); 
-          $noOfStudents=$n->num_rows;
-
-        if($sem=='Both'){
-          $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-        }else{
-          $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";}
-          $res = $conn->query($check);   
-          while($response=$res->fetch_assoc()){
-            $options[(int)$response["response"]-1]++;
-
-          }
-
-          if($q_id==$noOfQues){
-            for($g=0;$g<count($options);$g++){
-              $avg_mid=$avg_mid+((int)$optionName[$g]*(int)$options[$g]);
-            }
-            if($noOfStudents > 0)
-            {
-              $avg_mid=$avg_mid/$noOfStudents;
-            }
-          }
-
-          if($sem=="Both"){
-            $e = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-
-          }else{
-            $e = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-          }
-         $n1 = $conn->query($e); 
-         $noOfStudents1=$n1->num_rows;
-
-         if($sem=="Both"){
-          $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-         }else{
-          $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-         }
-         $res = $conn->query($check);   
-         while($response=$res->fetch_assoc()){
-          $options2[(int)$response["response"]-1]++;
-
-        }
-
-        if($q_id==$noOfQues){
-          for($g=0;$g<count($options);$g++){
-            $avg_end=$avg_end+((int)$optionName[$g]*(int)$options2[$g]);
-          }
-        }
-          if($noOfStudents1>0){
-            $avg_end=$avg_end/$noOfStudents1;
-        }
-        endwhile;
-    if($noOfStudents1+$noOfStudents>0){
-    $avg=($avg_mid+$avg_end)/2;
-  }
+    $avg_mid = count($batch_mid_avgs) > 0 ? array_sum($batch_mid_avgs) / count($batch_mid_avgs) : -1;
+    $avg_end = count($batch_end_avgs) > 0 ? array_sum($batch_end_avgs) / count($batch_end_avgs) : -1;
 
     ?>
 
@@ -182,9 +205,19 @@ while($row1=$res1->fetch_assoc()){
     <td class="ca" id="ccode"><?= $course_code ?></td>
     <td class="ca"  id="cname"><?= $c_name ?></td>
     <td class="ca"  id="ctype"><?= $ct ?></td>
-    <td class="ca" id="avgmid"><?php if($avg_mid>0){echo number_format((float)($avg_mid), 2,'.','');}else{ echo '-';} ?></td>
-    <td class="ca" id="avgend"><?php if($avg_end>0){echo number_format((float)($avg_end), 2,'.','');}else{ echo '-';} ?></td>
-    <td class="ca" id="avg"><?php if($avg_mid==0 && $avg_end>0){echo number_format((float)($avg_end), 2,'.','');}elseif($avg_end==0 && $avg_mid>0){echo number_format((float)($avg_mid), 2,'.','');}elseif($avg_mid+$avg_end==0){echo "-";}else{echo number_format((float)(($avg_end+$avg_mid))/2, 2,'.','');} ?></td>
+    <td class="ca" id="avgmid"><?php if($avg_mid >= 0){echo number_format((float)($avg_mid), 2,'.','');}else{ echo '-';} ?></td>
+    <td class="ca" id="avgend"><?php if($avg_end >= 0){echo number_format((float)($avg_end), 2,'.','');}else{ echo '-';} ?></td>
+    <td class="ca" id="avg"><?php 
+        if($avg_mid >= 0 && $avg_end >= 0) { 
+            echo number_format((float)(($avg_end+$avg_mid)/2), 2,'.',''); 
+        } elseif($avg_mid >= 0) { 
+            echo number_format((float)($avg_mid), 2,'.',''); 
+        } elseif($avg_end >= 0) { 
+            echo number_format((float)($avg_end), 2,'.',''); 
+        } else { 
+            echo "-"; 
+        } 
+    ?></td>
 </tr>
 
 <?php } 
@@ -197,102 +230,39 @@ while($rowE=$resE->fetch_assoc()){
   $c_name=$rowE['electiveName'];
   
 
-    if($course_code[0]=='L'){
-    $c=$course_code[0];
-    $ct = 'Lab';
-  }
-  elseif ($course_code[0]=='T'){
-    $c='TH';
-    if($course_code[1]=='H'){
-      $ct = 'Theory';
-    }else{
-      $ct = 'Tutorial';
+  	$c = 'TH';
+    $ct = 'Theory';
+    $code_upper = strtoupper($course_code);
+    if($code_upper[0] == 'L' || strpos($code_upper, 'LAB') !== false) {
+        $c = 'LAB';
+        $ct = 'Lab';
+    } elseif (strpos($code_upper, 'TU') !== false || strpos($code_upper, 'TUT') !== false || ($code_upper[0] == 'T' && strlen($code_upper) > 1 && $code_upper[1] != 'H')) {
+        $c = 'TU';
+        $ct = 'Tutorial';
+    } else {
+        $c = 'TH';
+        $ct = 'Theory';
+    } 
+
+    $s_fac = "SELECT DISTINCT f_id FROM electives WHERE electiveID='$course_code' AND acad_year='$year' AND sem='$sem' AND dept_id='$dept_id'";
+    $res_fac = $conn->query($s_fac);
+
+    $fac_mid_avgs = [];
+    $fac_end_avgs = [];
+
+    if($res_fac) {
+        while($fac = $res_fac->fetch_assoc()) {
+            $f_id = $fac['f_id'];
+            $mid_avg = getWeightedAverage($conn, $f_id, $course_code, '', '', $sem, $year, $dept_id, 'mid', true);
+            if($mid_avg >= 0) $fac_mid_avgs[] = $mid_avg;
+            
+            $end_avg = getWeightedAverage($conn, $f_id, $course_code, '', '', $sem, $year, $dept_id, 'end', true);
+            if($end_avg >= 0) $fac_end_avgs[] = $end_avg;
+        }
     }
-  } 
 
-  $pre = 2;
-  $avg_mid=0;
-  $avg_end=0;
-  $avg=0;
-
-    $sql = "SELECT q_id, question FROM question where course_type='$c' and acad_year='$year'";
-    $result = $conn->query($sql);   
-    $noOfQues=$result->num_rows;
-    while($row=$result->fetch_assoc()):
-      $q_id=$row['q_id'];
-      $question=$row["question"];
-
-      $s2 = "SELECT `option` FROM options where course_type='$c' and acad_year='$year' and q_id='$q_id'";
-        $re2 = $conn->query($s2);   
-        $noOfOptions=$re2->num_rows;
-        $options=array();
-        $options2=array();
-        $optionName=array();
-        while($r2=$re2->fetch_assoc()){
-          $options[]=0;
-          $options2[]=0;
-          $optionName[]=$r2["option"];
-        }
-
-        if($sem=='Both'){
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-        }else{
-          $m = "SELECT distinct(roll_no) FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";}
-          $n = $conn->query($m); 
-          $noOfStudents=$n->num_rows;
-
-        if($sem=='Both'){
-          $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-        }else{
-          $check = "SELECT response,roll_no FROM response_midsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";}
-          $res = $conn->query($check);   
-          while($response=$res->fetch_assoc()){
-            $options[(int)$response["response"]-1]++;
-
-          }
-
-          if($q_id==$noOfQues){
-            for($g=0;$g<count($options);$g++){
-              $avg_mid=$avg_mid+((int)$optionName[$g]*(int)$options[$g]);
-            }
-            if($noOfStudents > 0)
-            {
-              $avg_mid=$avg_mid/$noOfStudents;
-            }
-          }
-
-          if($sem=="Both"){
-            $e = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-
-          }else{
-            $e = "SELECT distinct(roll_no) FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-          }
-         $n1 = $conn->query($e); 
-         $noOfStudents1=$n1->num_rows;
-
-         if($sem=="Both"){
-          $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-         }else{
-          $check = "SELECT response,roll_no FROM response_endsem where q_id='$q_id' and course_code='$course_code' and acad_year='$year'";
-         }
-         $res = $conn->query($check);   
-         while($response=$res->fetch_assoc()){
-          $options2[(int)$response["response"]-1]++;
-
-        }
-
-        if($q_id==$noOfQues){
-          for($g=0;$g<count($options);$g++){
-            $avg_end=$avg_end+((int)$optionName[$g]*(int)$options2[$g]);
-          }
-        }
-          if($noOfStudents1>0){
-            $avg_end=$avg_end/$noOfStudents1;
-        }
-        endwhile;
-    if($noOfStudents1+$noOfStudents>0){
-    $avg=($avg_mid+$avg_end)/2;
-  }
+    $avg_mid = count($fac_mid_avgs) > 0 ? array_sum($fac_mid_avgs) / count($fac_mid_avgs) : -1;
+    $avg_end = count($fac_end_avgs) > 0 ? array_sum($fac_end_avgs) / count($fac_end_avgs) : -1;
 ?>
 
 <tr id="swacr">
@@ -300,9 +270,19 @@ while($rowE=$resE->fetch_assoc()){
     <td class="ca" id="ccode"><?= $course_code ?></td>
     <td class="ca"  id="cname"><?= $c_name." (Ele/IDC/Au)" ?></td>
     <td class="ca"  id="ctype"><?= $ct ?></td>
-    <td class="ca" id="avgmid"><?php if($avg_mid>0){echo number_format((float)($avg_mid), 2,'.','');}else{ echo '-';} ?></td>
-    <td class="ca" id="avgend"><?php if($avg_end>0){echo number_format((float)($avg_end), 2,'.','');}else{ echo '-';} ?></td>
-    <td class="ca" id="avg"><?php if($avg_mid==0 && $avg_end>0){echo number_format((float)($avg_end), 2,'.','');}elseif($avg_end==0 && $avg_mid>0){echo number_format((float)($avg_mid), 2,'.','');}elseif($avg_mid+$avg_end==0){echo "-";}else{echo number_format((float)(($avg_end+$avg_mid))/2, 2,'.','');} ?></td>
+    <td class="ca" id="avgmid"><?php if($avg_mid >= 0){echo number_format((float)($avg_mid), 2,'.','');}else{ echo '-';} ?></td>
+    <td class="ca" id="avgend"><?php if($avg_end >= 0){echo number_format((float)($avg_end), 2,'.','');}else{ echo '-';} ?></td>
+    <td class="ca" id="avg"><?php 
+        if($avg_mid >= 0 && $avg_end >= 0) { 
+            echo number_format((float)(($avg_end+$avg_mid)/2), 2,'.',''); 
+        } elseif($avg_mid >= 0) { 
+            echo number_format((float)($avg_mid), 2,'.',''); 
+        } elseif($avg_end >= 0) { 
+            echo number_format((float)($avg_end), 2,'.',''); 
+        } else { 
+            echo "-"; 
+        } 
+    ?></td>
 </tr>
 
 <?php } ?>

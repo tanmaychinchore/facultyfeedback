@@ -339,14 +339,17 @@ while($res2 = $r2->fetch_assoc()):
             $h_num_questions++; $overall_num_questions++;
             $q_weighted_avg = ($q_stu_count > 0) ? ($q_ach / $q_stu_count) : 0;
             ?>
+            <?php $canvas_id = preg_replace('/[^a-zA-Z0-9]/', '', $c_id . $section_or_batch . $q_id); ?>
             <div class="report-card">
                 <div class="question-text"><?= $global_q_counter . ". " . htmlspecialchars($q_text) ?></div>
-                <canvas id='c_<?= $c_id.$q_id ?>' width="400" height="220"></canvas>
+                <canvas id='c_<?= $canvas_id ?>' width="400" height="220"></canvas>
                 <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg, 2) ?></div>
             </div>
             <script>
             (function() {
-                var ctx = document.getElementById('c_<?= $c_id.$q_id ?>').getContext('2d');
+                var canvas = document.getElementById('c_<?= $canvas_id ?>');
+                if(!canvas) return;
+                var ctx = canvas.getContext('2d');
                 var names = <?= json_encode($names) ?>;
                 var vals = <?= json_encode($vals) ?>;
                 var counts = <?= json_encode($counts) ?>;
@@ -499,14 +502,17 @@ while($re = $r_el->fetch_assoc()):
             $he_num_questions++; $o_num_questions_e++;
             $q_weighted_avg_e = ($q_stu_e > 0) ? ($qae / $q_stu_e) : 0;
             ?>
+            <?php $canvas_id_e = preg_replace('/[^a-zA-Z0-9]/', '', $eid . $qid_e); ?>
             <div class="report-card">
                 <div class="question-text"><?= $global_q_counter_e . ". " . htmlspecialchars($qtx_e) ?></div>
-                <canvas id='e_<?= $eid.$qid_e ?>' width="400" height="220"></canvas>
+                <canvas id='e_<?= $canvas_id_e ?>' width="400" height="220"></canvas>
                 <div class="percentage-text">Weighted Average: <?= number_format($q_weighted_avg_e, 2) ?></div>
             </div>
             <script>
             (function() {
-                var ctx = document.getElementById('e_<?= $eid.$qid_e ?>').getContext('2d');
+                var canvas = document.getElementById('e_<?= $canvas_id_e ?>');
+                if(!canvas) return;
+                var ctx = canvas.getContext('2d');
                 var names = <?= json_encode($nese) ?>;
                 var vals = <?= json_encode($vse) ?>;
                 var counts = <?= json_encode($cse) ?>;
